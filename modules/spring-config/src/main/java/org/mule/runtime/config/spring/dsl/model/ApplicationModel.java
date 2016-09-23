@@ -27,11 +27,10 @@ import org.mule.runtime.config.spring.dsl.api.config.ComponentConfiguration;
 import org.mule.runtime.config.spring.dsl.model.extension.ModuleExtension;
 import org.mule.runtime.config.spring.dsl.model.extension.OperationExtension;
 import org.mule.runtime.config.spring.dsl.model.extension.ParameterExtension;
-import org.mule.runtime.config.spring.dsl.model.extension.loader.ModuleLoader;
+import org.mule.runtime.config.spring.dsl.model.extension.loader.ModulePluginLoader;
 import org.mule.runtime.config.spring.dsl.model.extension.schema.ModuleSchemaGenerator;
 import org.mule.runtime.config.spring.dsl.processor.ArtifactConfig;
 import org.mule.runtime.config.spring.dsl.processor.ConfigFile;
-import org.mule.runtime.config.spring.dsl.processor.xml.XmlCustomAttributeHandler;
 import org.mule.runtime.core.api.MuleRuntimeException;
 import org.mule.runtime.core.api.config.ConfigurationException;
 import org.mule.runtime.core.config.ComponentIdentifier;
@@ -49,13 +48,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import javax.xml.XMLConstants;
-
-import org.apache.commons.lang.StringUtils;
 import org.springframework.util.PropertyPlaceholderHelper;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -243,15 +238,11 @@ public class ApplicationModel {
           .add(new ComponentIdentifier.Builder().withNamespace(PARSER_TEST_NAMESPACE).withName("child").build())
           .add(new ComponentIdentifier.Builder().withNamespace(PARSER_TEST_NAMESPACE).withName("kid").build())
           .add(new ComponentIdentifier.Builder().withNamespace(DATA_WEAVE).withName("reader-property").build())
-          //TODO WIP-OPERATIONS check if needed
-          .add(new ComponentIdentifier.Builder().withNamespace(MULE_ROOT_ELEMENT).withName("operation").build())
           .build();
 
   private List<ComponentModel> muleComponentModels = new LinkedList<>();
   private List<ComponentModel> springComponentModels = new LinkedList<>();
   private Properties applicationProperties;
-  private Map<String, ModuleExtension> modules;
-
   /**
    * literal that represents the name of the global element for any given module. If the module's name is math, then
    * the value of this field will name the global element as <math:config ../>
@@ -293,9 +284,9 @@ public class ApplicationModel {
     validateModel(componentBuildingDefinitionRegistry);
     createEffectiveModel();
 
-    modules = getModulesUsedInApp(); //TODO ModuleLoader should be replaced with this one
-    createOperationRefEffectiveModel();
-    createConfigRefEffectiveModel();
+    ModulePluginLoader applicationModuleLoader = new ModulePluginLoader(getRootComponentModel(), applicationProperties);
+    createOperationRefEffectiveModel(applicationModuleLoader);
+    createConfigRefEffectiveModel(applicationModuleLoader);
   }
 
   /**
@@ -321,112 +312,74 @@ public class ApplicationModel {
     });
   }
 
-
-  private Map<String, ModuleExtension> getModulesUsedInApp() {
-    Map<String, ModuleExtension> modulesExtension = new ConcurrentHashMap<>();
-    muleComponentModels.stream()
-        .forEach(muleRootComponentModel -> modulesExtension.putAll(getModulesUsedIn(muleRootComponentModel)));
-    return modulesExtension;
-  }
-
-  private Map<String, ModuleExtension> getModulesUsedIn(ComponentModel muleRootComponentModel) {
-    ModuleLoader moduleLoader = new ModuleLoader();
-    Map<String, String> schemaLocations = getSchemaLocations(muleRootComponentModel);
-    Map<String, ModuleExtension> modulesExtension = new HashMap<>();
-
-    schemaLocations.forEach((namespace, location) -> {
-      Optional<ModuleExtension> extensionOptional = moduleLoader.lookup(location, applicationProperties);
-      if (extensionOptional.isPresent()) {
-        ModuleExtension moduleExtension = extensionOptional.get();
-        modulesExtension.put(moduleExtension.getName(), moduleExtension);
-      }
-    });
-
-    return modulesExtension;
-  }
-
-  //private ModuleExtension getModuleFor(URL url) {
-  //  //Document moduleDocument = getXmlDocument(url);
-  //  XmlConfigurationDocumentLoader xmlConfigurationDocumentLoader = new XmlConfigurationDocumentLoader();
-  //  Document moduleDocument =  xmlConfigurationDocumentLoader.loadDocument(url.openStream());
+  //private Map<String, ModuleExtension> getModulesUsedInApp() {
+  //  Map<String, ModuleExtension> modulesExtension = new ConcurrentHashMap<>();
+  //  muleComponentModels.stream()
+  //      .forEach(muleRootComponentModel -> modulesExtension.putAll(getModulesUsedIn(muleRootComponentModel)));
+  //  return modulesExtension;
+  //}
   //
-  //  XmlApplicationParser xmlApplicationParser = new XmlApplicationParser(new SpiServiceRegistry());
-  //  Optional<ConfigLine> parseModule = xmlApplicationParser.parse(moduleDocument.getDocumentElement());
-  //  if (!parseModule.isPresent()) {
-  //    throw new IllegalArgumentException(String.format("There was an issue while parsing the module for [%s]", url.getFile()));
-  //  }
-  //  //List<ComponentModel> componentModels = extractComponentDefinitionModel(asList(parseModule.get()), url.getFile());
-  //  //ModuleExtension moduleExtension = new ModuleModel().loadModule(componentModels.get(0));
+  //private Map<String, ModuleExtension> getModulesUsedIn(ComponentModel muleRootComponentModel) {
+  //  ModuleLoader moduleLoader = new ModuleLoader();
+  //  Map<String, String> schemaLocations = getSchemaLocations(muleRootComponentModel);
+  //  Map<String, ModuleExtension> modulesExtension = new HashMap<>();
   //
-  //  ComponentModelReader componentModelReader = new ComponentModelReader(applicationProperties);
-  //  ModuleExtension moduleExtension =
-  //      new ModuleModel().loadModule(componentModelReader.extractComponentDefinitionModel(parseModule.get(), url.getFile()));
-  //  return moduleExtension;
+  //  schemaLocations.forEach((namespace, location) -> {
+  //    Optional<ModuleExtension> extensionOptional = moduleLoader.lookup(location, applicationProperties);
+  //    if (extensionOptional.isPresent()) {
+  //      ModuleExtension moduleExtension = extensionOptional.get();
+  //      modulesExtension.put(moduleExtension.getName(), moduleExtension);
+  //    }
+  //  });
+  //
+  //  return modulesExtension;
   //}
   //
   ///**
-  // * TODO WIP-OPERATIONS copied from MuleArtifactContext#getXmlDocument
-  // */ //TODO WIP-OPERATIONS remove dead code
-  //private static final int VALIDATION_XSD = 3;
-  //
-  //private Document getXmlDocument(URL url) {
-  //  try {
-  //    String filename = url.getFile();
-  //    InputStream byteStream = url.openStream();
-  //    MuleArtifactContext.MuleLoggerErrorHandler errorHandler = new MuleArtifactContext.MuleLoggerErrorHandler(filename);
-  //    Document document = new MuleDocumentLoader()
-  //        .loadDocument(new InputSource(byteStream), new ModuleDelegatingEntityResolver(), errorHandler, VALIDATION_XSD, true);
-  //    errorHandler.displayErrors();
-  //    return document;
-  //  } catch (Exception e) {
-  //    throw new MuleRuntimeException(e);
+  // * returns a map with the namespaces and locations from the xsi:schemaLocation attribute.
+  // * If it can't success to do it so, it will throw an exception.
+  // *
+  // * @param muleRootComponentModel
+  // * @return map where the key represents the namespace and the value is the location of the xsd
+  // */
+  //private Map<String, String> getSchemaLocations(ComponentModel muleRootComponentModel) {
+  //  String xsiPrefix = null;
+  //  //finds the XSI prefix
+  //  for (Map.Entry<String, String> entry : muleRootComponentModel.getParameters().entrySet()) {
+  //    if (XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI.equals(entry.getValue())) {
+  //      xsiPrefix = StringUtils.removeStart(entry.getKey(), XMLConstants.XMLNS_ATTRIBUTE.concat(":"));
+  //      break;
+  //    }
   //  }
+  //  if (StringUtils.isBlank(xsiPrefix)) {
+  //    throw new IllegalArgumentException(String
+  //        .format("The file [%s] needs to define the XSI namespace defined (e.g.: xmlns:xsi=\"%s\")",
+  //                muleRootComponentModel.getCustomAttributes().get(XmlCustomAttributeHandler.CONFIG_FILE_NAME),
+  //                XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI));
+  //  }
+  //
+  //  String schemaLocationKey = xsiPrefix.concat(":schemaLocation");
+  //  String schemaLocationValue = muleRootComponentModel.getParameters().getOrDefault(schemaLocationKey, "");
+  //  String[] splittedSchemaLocation = schemaLocationValue.split("\\s+");
+  //
+  //  if (splittedSchemaLocation.length == 0 || ((splittedSchemaLocation.length & 1) != 0)) {
+  //    throw new IllegalArgumentException(String
+  //        .format("The file [%s] schemaLocation it's either missing, empty, or has non even values (it has to be a namespace+location per entry)",
+  //                muleRootComponentModel.getCustomAttributes().get(XmlCustomAttributeHandler.CONFIG_FILE_NAME)));
+  //  }
+  //
+  //  Map<String, String> schemaLocations = new HashMap<>();
+  //  for (int i = 0; i < splittedSchemaLocation.length; i = i + 2) {
+  //    schemaLocations.put(splittedSchemaLocation[i], splittedSchemaLocation[i + 1]);
+  //  }
+  //  return schemaLocations;
   //}
 
   /**
-   * returns a map with the namespaces and locations from the xsi:schemaLocation attribute.
-   * If it can't success to do it so, it will throw an exception.
-   *
-   * @param muleRootComponentModel
-   * @return map where the key represents the namespace and the value is the location of the xsd
-   */
-  private Map<String, String> getSchemaLocations(ComponentModel muleRootComponentModel) {
-    String xsiPrefix = null;
-    //finds the XSI prefix
-    for (Map.Entry<String, String> entry : muleRootComponentModel.getParameters().entrySet()) {
-      if (XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI.equals(entry.getValue())) {
-        xsiPrefix = StringUtils.removeStart(entry.getKey(), XMLConstants.XMLNS_ATTRIBUTE.concat(":"));
-        break;
-      }
-    }
-    if (StringUtils.isBlank(xsiPrefix)) {
-      throw new IllegalArgumentException(String
-          .format("The file [%s] needs to define the XSI namespace defined (e.g.: xmlns:xsi=\"%s\")",
-                  muleRootComponentModel.getCustomAttributes().get(XmlCustomAttributeHandler.CONFIG_FILE_NAME),
-                  XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI));
-    }
-
-    String schemaLocationKey = xsiPrefix.concat(":schemaLocation");
-    String schemaLocationValue = muleRootComponentModel.getParameters().getOrDefault(schemaLocationKey, "");
-    String[] splittedSchemaLocation = schemaLocationValue.split("\\s+");
-
-    if (splittedSchemaLocation.length == 0 || ((splittedSchemaLocation.length & 1) != 0)) {
-      throw new IllegalArgumentException(String
-          .format("The file [%s] schemaLocation it's either missing, empty, or has non even values (it has to be a namespace+location per entry)",
-                  muleRootComponentModel.getCustomAttributes().get(XmlCustomAttributeHandler.CONFIG_FILE_NAME)));
-    }
-
-    Map<String, String> schemaLocations = new HashMap<>();
-    for (int i = 0; i < splittedSchemaLocation.length; i = i + 2) {
-      schemaLocations.put(splittedSchemaLocation[i], splittedSchemaLocation[i + 1]);
-    }
-    return schemaLocations;
-  }
-
-  /**
    * TODO WIP-OPERATIONS begin of replacement logic
+   * @param applicationModuleLoader
    */
-  private void createOperationRefEffectiveModel() {
+  private void createOperationRefEffectiveModel(ModulePluginLoader applicationModuleLoader) {
     HashMap<Integer, ComponentModel> componentModelsToReplaceByIndex = new HashMap<>();
 
     executeOnEveryMuleComponentTree(componentModel -> {
@@ -434,7 +387,7 @@ public class ApplicationModel {
         ComponentModel operationRefModel = componentModel.getInnerComponents().get(i);
 
         ComponentIdentifier identifier = operationRefModel.getIdentifier();
-        ModuleExtension moduleExtension = modules.get(identifier.getNamespace());
+        ModuleExtension moduleExtension = applicationModuleLoader.get(identifier.getNamespace());
         if (moduleExtension != null
             && !identifier.getName().equals(MODULE_CONFIG_GLOBAL_ELEMENT_NAME)) //TODO WIP-OPERATIONS ideally only elements of flow, flow-ref, batch should be processed.. refactor/fix this
         {
@@ -453,7 +406,7 @@ public class ApplicationModel {
     });
   }
 
-  private void createConfigRefEffectiveModel() {
+  private void createConfigRefEffectiveModel(ModulePluginLoader applicationModuleLoader) {
     this.muleComponentModels.stream()
         .forEach(componentModel -> {
           HashMap<Integer, List<ComponentModel>> componentModelsToReplaceByIndex = new HashMap<>();
@@ -461,7 +414,7 @@ public class ApplicationModel {
           for (int i = 0; i < componentModel.getInnerComponents().size(); i++) {
             ComponentModel configRefModel = componentModel.getInnerComponents().get(i);
             ComponentIdentifier identifier = configRefModel.getIdentifier();
-            ModuleExtension moduleExtension = modules.get(identifier.getNamespace());
+            ModuleExtension moduleExtension = applicationModuleLoader.get(identifier.getNamespace());
             if (moduleExtension != null) {
               List<ComponentModel> replacementGlobalElements = createGlobalElementsInstance(configRefModel, moduleExtension);
               componentModelsToReplaceByIndex.put(i, replacementGlobalElements);

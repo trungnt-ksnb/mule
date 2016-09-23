@@ -54,23 +54,6 @@ public class ModuleLoader {
     return pathMatchingResourcePatternResolver.getResources("classpath*:**/module-*.xml");
   }
 
-  ///**
-  // * TODO WIP-OPERATIONS copied from MuleArtifactContext#getXmlDocument
-  // */ //TODO WIP-OPERATIONS remove dead code
-  //private static final int VALIDATION_XSD = 3;
-  //
-  //private Document getXmlDocument(Resource resource) throws Exception {
-  //  String filename = resource.getFilename();
-  //  InputStream inputStream = resource.getInputStream();
-  //  MuleArtifactContext.MuleLoggerErrorHandler errorHandler = new MuleArtifactContext.MuleLoggerErrorHandler(filename);
-  //  Document document = new MuleDocumentLoader()
-  //      .loadDocument(new InputSource(inputStream),
-  //                    new DelegatingEntityResolver(Thread.currentThread().getContextClassLoader()),
-  //                    errorHandler, VALIDATION_XSD, true);
-  //  errorHandler.displayErrors();
-  //  return document;
-  //}
-
   private Optional<ModuleExtension> getModuleFor(String schemaLocation, Properties applicationProperties) throws Exception {
     Optional<ModuleExtension> result = Optional.empty();
 

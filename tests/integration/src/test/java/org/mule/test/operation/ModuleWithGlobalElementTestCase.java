@@ -42,7 +42,7 @@ public class ModuleWithGlobalElementTestCase extends ExtensionFunctionalTestCase
   public void testHttpDontLogin() throws Exception {
     try {
       flowRunner("testHttpDontLogin").run();
-      fail("Should not haver reach here");
+      fail("Should not have reach here");
     } catch (MessagingException me) {
       assertThat(me.getCause(), instanceOf(ResponseValidatorException.class));
       assertThat(me.getCause().getMessage(), Is.is("Response code 401 mapped as failure."));

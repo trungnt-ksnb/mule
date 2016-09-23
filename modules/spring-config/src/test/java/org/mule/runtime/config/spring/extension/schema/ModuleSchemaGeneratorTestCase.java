@@ -47,9 +47,12 @@ public class ModuleSchemaGeneratorTestCase {
     final List<String> extensions = new ArrayList<String>() {
 
       {
-        add("module-single-operation");
-        add("module-param-types");
         add("module-param-default-types");
+        add("module-param-types");
+        add("module-properties-default-types");
+        add("module-properties-types");
+        add("module-single-operation");
+        add("module-single-operation-with-property");
       }
     };
 
