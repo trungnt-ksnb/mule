@@ -57,6 +57,7 @@ public class DefaultMuleApplication implements Application {
   protected transient final Logger logger = LoggerFactory.getLogger(getClass());
   protected transient final Logger deployLogger = LoggerFactory.getLogger(DefaultMuleApplication.class);
 
+  private final String artifactId;
   protected final ApplicationDescriptor descriptor;
   private final DomainRepository domainRepository;
   private final List<ArtifactPlugin> artifactPlugins;
@@ -69,9 +70,11 @@ public class DefaultMuleApplication implements Application {
   private ServerNotificationListener<MuleContextNotification> statusListener;
   private ArtifactContext artifactContext;
 
-  public DefaultMuleApplication(ApplicationDescriptor descriptor, MuleDeployableArtifactClassLoader deploymentClassLoader,
+  public DefaultMuleApplication(String artifactId, ApplicationDescriptor descriptor,
+                                MuleDeployableArtifactClassLoader deploymentClassLoader,
                                 List<ArtifactPlugin> artifactPlugins, DomainRepository domainRepository,
                                 ServiceRepository serviceRepository, File location) {
+    this.artifactId = artifactId;
     this.descriptor = descriptor;
     this.domainRepository = domainRepository;
     this.serviceRepository = serviceRepository;
@@ -295,6 +298,11 @@ public class DefaultMuleApplication implements Application {
   @Override
   public String getArtifactName() {
     return descriptor.getName();
+  }
+
+  @Override
+  public String getArtifactId() {
+    return artifactId;
   }
 
   @Override

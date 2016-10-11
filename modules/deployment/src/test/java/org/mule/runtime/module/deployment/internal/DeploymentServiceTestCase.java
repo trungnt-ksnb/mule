@@ -3124,7 +3124,8 @@ public class DeploymentServiceTestCase extends AbstractMuleTestCase {
   private DefaultMuleDomain createDefaultDomain() {
     return new DefaultMuleDomain(new DomainDescriptor(DEFAULT_DOMAIN_NAME),
                                  new DomainClassLoaderFactory(getClass().getClassLoader())
-                                     .create(containerClassLoader, new DomainDescriptor(DEFAULT_DOMAIN_NAME), emptyList()));
+                                     .create("domain/" + DEFAULT_DOMAIN_NAME, containerClassLoader,
+                                             new DomainDescriptor(DEFAULT_DOMAIN_NAME), emptyList()));
   }
 
   /**

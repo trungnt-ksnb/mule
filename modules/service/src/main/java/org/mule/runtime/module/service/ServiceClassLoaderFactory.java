@@ -33,7 +33,8 @@ public class ServiceClassLoaderFactory implements ArtifactClassLoaderFactory<Ser
    * @inherited
    */
   @Override
-  public ArtifactClassLoader create(ArtifactClassLoader parent, ServiceDescriptor descriptor) {
+  public ArtifactClassLoader create(String artifactId, ArtifactClassLoader parent, ServiceDescriptor descriptor) {
+    //TODO(pablo.kraan): serialization - ppas the artifactId
     File rootFolder = descriptor.getRootFolder();
     if (rootFolder == null || !rootFolder.exists()) {
       throw new IllegalArgumentException("Service folder does not exists: " + (rootFolder != null ? rootFolder.getName() : null));
@@ -44,7 +45,7 @@ public class ServiceClassLoaderFactory implements ArtifactClassLoaderFactory<Ser
     addDirectoryToClassLoader(urls, new File(rootFolder, CLASSES_DIR));
     loadJarsFromFolder(urls, new File(rootFolder, LIB_DIR));
 
-    return new MuleArtifactClassLoader(descriptor, urls.toArray(new URL[0]), parent.getClassLoader(),
+    return new MuleArtifactClassLoader(artifactId, descriptor, urls.toArray(new URL[0]), parent.getClassLoader(),
                                        parent.getClassLoaderLookupPolicy());
   }
 

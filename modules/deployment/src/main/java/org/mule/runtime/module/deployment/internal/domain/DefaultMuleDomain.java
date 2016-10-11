@@ -225,6 +225,12 @@ public class DefaultMuleDomain implements Domain {
   }
 
   @Override
+  public String getArtifactId() {
+    //TODO(pablo.kraan): serialization - ppas the artifactId
+    return null;
+  }
+
+  @Override
   public DomainDescriptor getDescriptor() {
     return descriptor;
   }

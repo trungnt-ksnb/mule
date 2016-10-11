@@ -25,9 +25,10 @@ public class TemporaryArtifactClassLoaderFactory implements DeployableArtifactCl
    * {@inheritDoc}
    */
   @Override
-  public ArtifactClassLoader create(ArtifactClassLoader parent, ArtifactDescriptor descriptor,
+  public ArtifactClassLoader create(String artifactId, ArtifactClassLoader parent, ArtifactDescriptor descriptor,
                                     List<ArtifactClassLoader> artifactPluginClassLoaders) {
-    return new MuleDeployableArtifactClassLoader(descriptor, new URL[0], parent.getClassLoader(),
+    //TODO(pablo.kraan): serialization - ppas the artifactId
+    return new MuleDeployableArtifactClassLoader(null, descriptor, new URL[0], parent.getClassLoader(),
                                                  parent.getClassLoaderLookupPolicy(), artifactPluginClassLoaders);
   }
 

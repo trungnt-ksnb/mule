@@ -25,10 +25,10 @@ public class MuleApplicationClassLoader extends MuleDeployableArtifactClassLoade
 
   private NativeLibraryFinder nativeLibraryFinder;
 
-  public MuleApplicationClassLoader(ArtifactDescriptor artifactDescriptor, ClassLoader parentCl,
+  public MuleApplicationClassLoader(String artifactId, ArtifactDescriptor artifactDescriptor, ClassLoader parentCl,
                                     NativeLibraryFinder nativeLibraryFinder, List<URL> urls,
                                     ClassLoaderLookupPolicy lookupPolicy, List<ArtifactClassLoader> artifactPluginClassLoaders) {
-    super(artifactDescriptor, urls.toArray(new URL[0]), parentCl, lookupPolicy, artifactPluginClassLoaders);
+    super(artifactId, artifactDescriptor, urls.toArray(new URL[0]), parentCl, lookupPolicy, artifactPluginClassLoaders);
 
     this.nativeLibraryFinder = nativeLibraryFinder;
   }
@@ -44,6 +44,6 @@ public class MuleApplicationClassLoader extends MuleDeployableArtifactClassLoade
 
   @Override
   protected String[] getLocalResourceLocations() {
-    return new String[] {MuleFoldersUtil.getAppClassesFolder(getArtifactName()).getAbsolutePath()};
+    return new String[] {MuleFoldersUtil.getAppClassesFolder(getArtifactId()).getAbsolutePath()};
   }
 }

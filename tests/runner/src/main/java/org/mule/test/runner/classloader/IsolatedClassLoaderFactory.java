@@ -89,7 +89,7 @@ public class IsolatedClassLoaderFactory {
     ClassLoaderLookupPolicy childClassLoaderLookupPolicy = testContainerClassLoaderFactory.getContainerClassLoaderLookupPolicy();
 
     RegionClassLoader regionClassLoader =
-        new RegionClassLoader(new ArtifactDescriptor("Region"), containerClassLoader.getClassLoader(),
+        new RegionClassLoader(null, new ArtifactDescriptor("Region"), containerClassLoader.getClassLoader(),
                               childClassLoaderLookupPolicy);
 
     final List<ArtifactClassLoader> filteredPluginsArtifactClassLoaders = new ArrayList<>();
@@ -100,7 +100,8 @@ public class IsolatedClassLoaderFactory {
       for (PluginUrlClassification pluginUrlClassification : artifactUrlClassification.getPluginClassificationUrls()) {
         logClassLoaderUrls("PLUGIN (" + pluginUrlClassification.getName() + ")", pluginUrlClassification.getUrls());
 
-        MuleArtifactClassLoader pluginCL = new MuleArtifactClassLoader(new ArtifactDescriptor(pluginUrlClassification.getName()),
+        //TODO(pablo.kraan): serialization - ppas the artifactId
+        MuleArtifactClassLoader pluginCL = new MuleArtifactClassLoader(null, new ArtifactDescriptor(pluginUrlClassification.getName()),
                                                                        pluginUrlClassification.getUrls().toArray(new URL[0]),
                                                                        regionClassLoader, childClassLoaderLookupPolicy);
         pluginsArtifactClassLoaders.add(pluginCL);
@@ -210,9 +211,10 @@ public class IsolatedClassLoaderFactory {
     } catch (IllegalAccessException | InvocationTargetException e) {
       throw new RuntimeException("Error while appending URLs to launcher class loader", e);
     }
-
-    return new MuleArtifactClassLoader(new ArtifactDescriptor("launcher"), new URL[0], launcherClassLoader,
-                                       new MuleClassLoaderLookupPolicy(Collections.emptyMap(), Collections.<String>emptySet()));
+    //TODO(pablo.kraan): serialization - ppas the artifactId
+    return new MuleArtifactClassLoader(null, new ArtifactDescriptor("launcher"), new URL[0], launcherClassLoader,
+                                       new MuleClassLoaderLookupPolicy(Collections.emptyMap(), Collections.<String>emptySet())
+    );
   }
 
   private ArtifactClassLoaderFilter createArtifactClassLoaderFilter(PluginUrlClassification pluginUrlClassification) {
@@ -240,7 +242,8 @@ public class IsolatedClassLoaderFactory {
                                                                      ClassLoaderLookupPolicy childClassLoaderLookupPolicy,
                                                                      ArtifactUrlClassification artifactUrlClassification) {
     logClassLoaderUrls("APP", artifactUrlClassification.getApplicationUrls());
-    return new MuleArtifactClassLoader(new ArtifactDescriptor("app"),
+    //TODO(pablo.kraan): serialization - ppas the artifactId
+    return new MuleArtifactClassLoader(null, new ArtifactDescriptor("app"),
                                        artifactUrlClassification.getApplicationUrls().toArray(new URL[0]), parent,
                                        childClassLoaderLookupPolicy);
   }

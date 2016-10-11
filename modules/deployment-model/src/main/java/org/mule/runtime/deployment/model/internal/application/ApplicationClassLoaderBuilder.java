@@ -7,6 +7,7 @@
 package org.mule.runtime.deployment.model.internal.application;
 
 import static org.mule.runtime.core.util.Preconditions.checkState;
+import org.mule.runtime.deployment.model.api.application.ApplicationDescriptor;
 import org.mule.runtime.deployment.model.api.plugin.ArtifactPluginClassLoaderFactory;
 import org.mule.runtime.deployment.model.internal.AbstractArtifactClassLoaderBuilder;
 import org.mule.runtime.module.artifact.classloader.ArtifactClassLoader;
@@ -14,6 +15,7 @@ import org.mule.runtime.module.artifact.classloader.MuleDeployableArtifactClassL
 import org.mule.runtime.deployment.model.api.application.Application;
 import org.mule.runtime.deployment.model.api.domain.Domain;
 import org.mule.runtime.deployment.model.api.plugin.ArtifactPluginRepository;
+import org.mule.runtime.module.artifact.descriptor.ArtifactDescriptor;
 
 import java.io.IOException;
 
@@ -52,6 +54,11 @@ public class ApplicationClassLoaderBuilder extends AbstractArtifactClassLoaderBu
     checkState(domain != null, "Domain cannot be null");
 
     return (MuleDeployableArtifactClassLoader) super.build();
+  }
+
+  @Override
+  protected String getArtifactId(ArtifactDescriptor artifactDescriptor) {
+    return "domain/" + ((ApplicationDescriptor) artifactDescriptor).getDomain() + "/app" + artifactDescriptor.getName();
   }
 
   /**

@@ -19,7 +19,6 @@ import static org.mule.runtime.container.api.MuleFoldersUtil.getAppLibFolder;
 import org.mule.runtime.container.api.MuleFoldersUtil;
 import org.mule.runtime.core.api.config.MuleProperties;
 import org.mule.runtime.core.util.FileUtils;
-import org.mule.runtime.deployment.model.internal.application.MuleApplicationClassLoader;
 import org.mule.runtime.deployment.model.internal.domain.MuleSharedDomainClassLoader;
 import org.mule.runtime.module.artifact.classloader.ClassLoaderLookupPolicy;
 import org.mule.runtime.module.artifact.descriptor.ArtifactDescriptor;
@@ -95,7 +94,7 @@ public class MuleApplicationClassLoaderTestCase extends AbstractMuleTestCase {
         new MuleSharedDomainClassLoader(new ArtifactDescriptor(DOMAIN_NAME), Thread.currentThread().getContextClassLoader(),
                                         mock(ClassLoaderLookupPolicy.class), emptyList());
 
-    appCL = new MuleApplicationClassLoader(new ArtifactDescriptor(APP_NAME), domainCL, null, urls,
+    appCL = new MuleApplicationClassLoader(APP_NAME, new ArtifactDescriptor(APP_NAME), domainCL, null, urls,
                                            mock(ClassLoaderLookupPolicy.class), emptyList());
   }
 

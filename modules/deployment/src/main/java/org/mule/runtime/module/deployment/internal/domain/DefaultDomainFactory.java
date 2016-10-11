@@ -59,7 +59,8 @@ public class DefaultDomainFactory implements DomainFactory {
     DomainDescriptor descriptor = findDomain(domainName);
     // TODO MULE-9653 - use the plugins class loader maps when plugins are allowed in domains
     DefaultMuleDomain defaultMuleDomain =
-        new DefaultMuleDomain(descriptor, domainClassLoaderFactory.create(containerClassLoader, descriptor, emptyList()));
+        new DefaultMuleDomain(descriptor, domainClassLoaderFactory.create("domain/" + DEFAULT_DOMAIN_NAME, containerClassLoader,
+                                                                          descriptor, emptyList()));
     defaultMuleDomain.setDeploymentListener(deploymentListener);
     DomainWrapper domainWrapper = new DomainWrapper(defaultMuleDomain, this);
     domainManager.addDomain(domainWrapper);

@@ -10,6 +10,7 @@ import static java.lang.Integer.toHexString;
 import static java.lang.String.format;
 import static java.lang.System.identityHashCode;
 import static org.apache.commons.io.IOUtils.closeQuietly;
+import static org.apache.commons.lang.StringUtils.isEmpty;
 import static org.mule.runtime.core.util.Preconditions.checkArgument;
 import org.mule.runtime.core.util.IOUtils;
 import org.mule.runtime.module.artifact.descriptor.ArtifactDescriptor;
@@ -30,6 +31,7 @@ public class MuleArtifactClassLoader extends FineGrainedControlClassLoader imple
 
   private static final String DEFAULT_RESOURCE_RELEASER_CLASS_LOCATION =
       "/org/mule/module/artifact/classloader/DefaultResourceReleaser.class";
+  private final String artifactId;
 
   protected List<ShutdownListener> shutdownListeners = new ArrayList<>();
 
@@ -38,16 +40,18 @@ public class MuleArtifactClassLoader extends FineGrainedControlClassLoader imple
   private String resourceReleaserClassLocation = DEFAULT_RESOURCE_RELEASER_CLASS_LOCATION;
   private ArtifactDescriptor artifactDescriptor;
 
-  public MuleArtifactClassLoader(ArtifactDescriptor artifactDescriptor, URL[] urls, ClassLoader parent,
+  public MuleArtifactClassLoader(String artifactId, ArtifactDescriptor artifactDescriptor, URL[] urls, ClassLoader parent,
                                  ClassLoaderLookupPolicy lookupPolicy) {
     super(urls, parent, lookupPolicy);
+    checkArgument(!isEmpty(artifactId), "artifactId cannot be empty");
     checkArgument(artifactDescriptor != null, "artifactDescriptor cannot be null");
+    this.artifactId = artifactId;
     this.artifactDescriptor = artifactDescriptor;
   }
 
   @Override
-  public String getArtifactName() {
-    return artifactDescriptor.getName();
+  public String getArtifactId() {
+    return artifactId;
   }
 
   @Override
@@ -124,6 +128,6 @@ public class MuleArtifactClassLoader extends FineGrainedControlClassLoader imple
 
   @Override
   public String toString() {
-    return format("%s[%s]@%s", getClass().getName(), getArtifactName(), toHexString(identityHashCode(this)));
+    return format("%s[%s]@%s", getClass().getName(), getArtifactId(), toHexString(identityHashCode(this)));
   }
 }

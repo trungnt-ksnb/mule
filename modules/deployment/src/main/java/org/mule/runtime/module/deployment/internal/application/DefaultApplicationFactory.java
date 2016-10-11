@@ -98,8 +98,11 @@ public class DefaultApplicationFactory implements ArtifactFactory<Application> {
 
     List<ArtifactPlugin> artifactPlugins = createArtifactPluginList(applicationClassLoader, applicationPluginDescriptors);
 
+    //TODO(pablo.kraan): serialization - move ID generation to somewhere else
+    final String artifactId = domain.getArtifactId() + "-" + descriptor.getName();
     DefaultMuleApplication delegate =
-        new DefaultMuleApplication(descriptor, applicationClassLoader, artifactPlugins, domainRepository, serviceRepository,
+        new DefaultMuleApplication(artifactId, descriptor, applicationClassLoader, artifactPlugins, domainRepository,
+                                   serviceRepository,
                                    descriptor.getArtifactLocation());
 
     if (deploymentListener != null) {
@@ -113,7 +116,7 @@ public class DefaultApplicationFactory implements ArtifactFactory<Application> {
                                                         List<ArtifactPluginDescriptor> plugins) {
     return plugins.stream()
         .map(artifactPluginDescriptor -> new DefaultArtifactPlugin(artifactPluginDescriptor, applicationClassLoader
-            .getArtifactPluginClassLoaders().stream().filter(artifactClassLoader -> artifactClassLoader.getArtifactName()
+            .getArtifactPluginClassLoaders().stream().filter(artifactClassLoader -> artifactClassLoader.getArtifactId()
                 .endsWith(artifactPluginDescriptor.getName()))
             .findFirst().get()))
         .collect(toList());

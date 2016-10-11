@@ -21,10 +21,8 @@ import static org.mule.runtime.core.api.config.MuleProperties.MULE_HOME_DIRECTOR
 import static org.mule.runtime.core.util.FileUtils.stringToFile;
 import org.mule.runtime.core.util.FileUtils;
 import org.mule.runtime.deployment.model.api.application.ApplicationDescriptor;
-import org.mule.runtime.deployment.model.internal.application.MuleApplicationClassLoaderFactory;
 import org.mule.runtime.module.artifact.classloader.ArtifactClassLoader;
 import org.mule.runtime.module.artifact.classloader.ClassLoaderLookupPolicy;
-import org.mule.runtime.deployment.model.internal.application.MuleApplicationClassLoader;
 import org.mule.runtime.deployment.model.internal.nativelib.NativeLibraryFinderFactory;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
@@ -90,7 +88,7 @@ public class MuleApplicationClassLoaderFactoryTestCase extends AbstractMuleTestC
     descriptor.setDomain(DOMAIN_NAME);
 
     final MuleApplicationClassLoader artifactClassLoader =
-        (MuleApplicationClassLoader) classLoaderFactory.create(parentArtifactClassLoader, descriptor, emptyList());
+        (MuleApplicationClassLoader) classLoaderFactory.create(null, parentArtifactClassLoader, descriptor, emptyList());
 
     verify(nativeLibraryFinderFactory).create(APP_NAME);
     assertThat(artifactClassLoader.getParent(), is(parentArtifactClassLoader.getClassLoader()));

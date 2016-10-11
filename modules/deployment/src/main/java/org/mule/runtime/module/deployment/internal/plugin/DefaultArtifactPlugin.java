@@ -47,6 +47,12 @@ public class DefaultArtifactPlugin implements ArtifactPlugin {
   }
 
   @Override
+  public String getArtifactId() {
+    //TODO(pablo.kraan): serialization - ppas the artifactId
+    return null;
+  }
+
+  @Override
   public File[] getResourceFiles() {
     return new File[0];
   }
