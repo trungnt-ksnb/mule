@@ -8,8 +8,10 @@ package org.mule.module.http.functional.requester;
 
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 import org.mule.construct.Flow;
+import org.mule.tck.junit4.FlakyTest;
 import org.mule.tck.probe.JUnitProbe;
 import org.mule.tck.probe.PollingProber;
 
@@ -47,7 +49,7 @@ public class HttpRequestConnectionsPersistenceTestCase extends AbstractHttpReque
             @Override
             public boolean test() throws Exception
             {
-                return isConnectionClosed();
+                return getConnectedEndPoint() == null;
             }
 
             @Override
@@ -59,11 +61,12 @@ public class HttpRequestConnectionsPersistenceTestCase extends AbstractHttpReque
     }
 
     @Test
+    @FlakyTest
     public void nonPersistentConnections() throws Exception
     {
         Flow flow = (Flow) getFlowConstruct("nonPersistent");
         flow.process(getTestEvent(TEST_MESSAGE));
-        assertThat(isConnectionClosed(), is(true));
+        assertThat(getConnectedEndPoint(), is(nullValue()));
     }
 
     private void ensureConnectionIsOpen()
@@ -74,11 +77,6 @@ public class HttpRequestConnectionsPersistenceTestCase extends AbstractHttpReque
 
         assertThat(endPoint.getLocalAddress().getPort(), is(httpPort.getNumber()));
         assertThat(endPoint.getRemoteAddress().getPort(), is(remotePort));
-    }
-
-    private boolean isConnectionClosed()
-    {
-        return getConnectedEndPoint() == null;
     }
 
     private EndPoint getConnectedEndPoint()
