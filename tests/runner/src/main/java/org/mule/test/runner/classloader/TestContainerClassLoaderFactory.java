@@ -92,9 +92,8 @@ public class TestContainerClassLoaderFactory extends ContainerClassLoaderFactory
                                                           final ClassLoaderLookupPolicy containerLookupPolicy,
                                                           ArtifactDescriptor artifactDescriptor) {
     final ArtifactDescriptor containerDescriptor = new ArtifactDescriptor("mule");
-    //TODO(pablo.kraan): serialization - ppas the artifactId
     final ArtifactClassLoader containerClassLoader =
-        new MuleArtifactClassLoader(null, containerDescriptor, urls, parentClassLoader,
+        new MuleArtifactClassLoader(containerDescriptor.getName(), containerDescriptor, urls, parentClassLoader,
                                     new MuleClassLoaderLookupPolicy(Collections.emptyMap(), getBootPackages()));
     return createContainerFilteringClassLoader(withContextClassLoader(classLoader, () -> discoverModules()),
                                                containerClassLoader);
