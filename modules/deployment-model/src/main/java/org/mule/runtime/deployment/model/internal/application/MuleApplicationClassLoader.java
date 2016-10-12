@@ -44,6 +44,11 @@ public class MuleApplicationClassLoader extends MuleDeployableArtifactClassLoade
 
   @Override
   protected String[] getLocalResourceLocations() {
-    return new String[] {MuleFoldersUtil.getAppClassesFolder(getArtifactId()).getAbsolutePath()};
+    return new String[] {MuleFoldersUtil.getAppClassesFolder(getArtifactName()).getAbsolutePath()};
+  }
+
+  private String getArtifactName() {
+    final String artifactId = getArtifactId();
+    return artifactId.substring(artifactId.lastIndexOf("/") + 1);
   }
 }

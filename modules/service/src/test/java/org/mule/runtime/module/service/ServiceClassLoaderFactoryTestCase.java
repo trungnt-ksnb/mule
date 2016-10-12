@@ -30,6 +30,8 @@ import org.junit.rules.TemporaryFolder;
 
 public class ServiceClassLoaderFactoryTestCase extends AbstractMuleTestCase {
 
+  public static final String SERVICE_SERVICE_ID = "service/serviceId";
+  public static final String SERVICE_ID = SERVICE_SERVICE_ID;
   private final ClassLoaderLookupPolicy lookupPolicy = mock(ClassLoaderLookupPolicy.class);
   @Rule
   public TemporaryFolder serviceFolder = new TemporaryFolder();
@@ -50,7 +52,7 @@ public class ServiceClassLoaderFactoryTestCase extends AbstractMuleTestCase {
 
   @Test
   public void createsEmptyClassLoader() throws Exception {
-    final ArtifactClassLoader artifactClassLoader = factory.create(null, parentClassLoader, descriptor);
+    final ArtifactClassLoader artifactClassLoader = factory.create(SERVICE_ID, parentClassLoader, descriptor);
     final MuleArtifactClassLoader classLoader = (MuleArtifactClassLoader) artifactClassLoader.getClassLoader();
     assertThat(classLoader.getURLs(), equalTo(new URL[0]));
   }
@@ -66,7 +68,7 @@ public class ServiceClassLoaderFactoryTestCase extends AbstractMuleTestCase {
   public void addsClassesFolderToClassLoader() throws Exception {
     File classesFolder = serviceFolder.newFolder(ServiceClassLoaderFactory.CLASSES_DIR);
 
-    final ArtifactClassLoader artifactClassLoader = factory.create(null, parentClassLoader, descriptor);
+    final ArtifactClassLoader artifactClassLoader = factory.create(SERVICE_ID, parentClassLoader, descriptor);
     final MuleArtifactClassLoader classLoader = (MuleArtifactClassLoader) artifactClassLoader.getClassLoader();
     assertThat(classLoader.getURLs(), equalTo(new URL[] {classesFolder.toURI().toURL()}));
   }
@@ -77,7 +79,7 @@ public class ServiceClassLoaderFactoryTestCase extends AbstractMuleTestCase {
     File jarFile = new File(libFolder, "dummy.jar");
     jarFile.createNewFile();
 
-    final ArtifactClassLoader artifactClassLoader = factory.create(null, parentClassLoader, descriptor);
+    final ArtifactClassLoader artifactClassLoader = factory.create(SERVICE_ID, parentClassLoader, descriptor);
     final MuleArtifactClassLoader classLoader = (MuleArtifactClassLoader) artifactClassLoader.getClassLoader();
     assertThat(classLoader.getURLs(), equalTo(new URL[] {jarFile.toURI().toURL()}));
   }
@@ -88,14 +90,14 @@ public class ServiceClassLoaderFactoryTestCase extends AbstractMuleTestCase {
     File jarFile = new File(libFolder, "dummy.txt");
     jarFile.createNewFile();
 
-    final ArtifactClassLoader artifactClassLoader = factory.create(null, parentClassLoader, descriptor);
+    final ArtifactClassLoader artifactClassLoader = factory.create(SERVICE_ID, parentClassLoader, descriptor);
     final MuleArtifactClassLoader classLoader = (MuleArtifactClassLoader) artifactClassLoader.getClassLoader();
     assertThat(classLoader.getURLs(), equalTo(new URL[] {}));
   }
 
   @Test
   public void usesClassLoaderLookupPolicy() throws Exception {
-    final ArtifactClassLoader artifactClassLoader = factory.create(null, parentClassLoader, descriptor);
+    final ArtifactClassLoader artifactClassLoader = factory.create(SERVICE_ID, parentClassLoader, descriptor);
     final MuleArtifactClassLoader classLoader = (MuleArtifactClassLoader) artifactClassLoader.getClassLoader();
 
     final String className = "com.dummy.Foo";

@@ -58,7 +58,7 @@ public class ApplicationClassLoaderBuilder extends AbstractArtifactClassLoaderBu
 
   @Override
   protected String getArtifactId(ArtifactDescriptor artifactDescriptor) {
-    return "domain/" + ((ApplicationDescriptor) artifactDescriptor).getDomain() + "/app" + artifactDescriptor.getName();
+    return "domain/" + ((ApplicationDescriptor) artifactDescriptor).getDomain() + "/app/" + artifactDescriptor.getName();
   }
 
   /**

@@ -49,9 +49,10 @@ public class DomainClassLoaderFactoryTestCase extends AbstractDomainTestCase {
 
     DomainDescriptor descriptor = getTestDescriptor(DEFAULT_DOMAIN_NAME);
 
+    final String artifactId = "domain/" + DEFAULT_DOMAIN_NAME;
     assertThat(new DomainClassLoaderFactory(getClass().getClassLoader())
-        .create(null, containerClassLoader, descriptor, emptyList())
-        .getArtifactId(), is(DEFAULT_DOMAIN_NAME));
+        .create(artifactId, containerClassLoader, descriptor, emptyList())
+        .getArtifactId(), is(artifactId));
   }
 
   @Test
@@ -64,7 +65,7 @@ public class DomainClassLoaderFactoryTestCase extends AbstractDomainTestCase {
         new DomainClassLoaderFactory(getClass().getClassLoader()).create(null, containerClassLoader, descriptor, emptyList());
 
     assertThat(domainClassLoader.getClassLoader(), instanceOf(MuleSharedDomainClassLoader.class));
-    assertThat(domainClassLoader.getArtifactId(), equalTo(domainName));
+    assertThat(domainClassLoader.getArtifactId(), equalTo("domain/" + domainName));
   }
 
   @Test(expected = DeploymentException.class)
@@ -83,7 +84,7 @@ public class DomainClassLoaderFactoryTestCase extends AbstractDomainTestCase {
         new DomainClassLoaderFactory(getClass().getClassLoader()).create(null, containerClassLoader, descriptor, emptyList());
 
     assertThat(domainClassLoader.getClassLoader(), instanceOf(MuleSharedDomainClassLoader.class));
-    assertThat(domainClassLoader.getArtifactId(), equalTo(domainName));
+    assertThat(domainClassLoader.getArtifactId(), equalTo("domain/" + domainName));
   }
 
   private DomainDescriptor getTestDescriptor(String name) {

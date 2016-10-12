@@ -99,7 +99,7 @@ public class DefaultApplicationFactory implements ArtifactFactory<Application> {
     List<ArtifactPlugin> artifactPlugins = createArtifactPluginList(applicationClassLoader, applicationPluginDescriptors);
 
     //TODO(pablo.kraan): serialization - move ID generation to somewhere else
-    final String artifactId = domain.getArtifactId() + "-" + descriptor.getName();
+    final String artifactId = domain.getArtifactId() + "/app/" + descriptor.getName();
     DefaultMuleApplication delegate =
         new DefaultMuleApplication(artifactId, descriptor, applicationClassLoader, artifactPlugins, domainRepository,
                                    serviceRepository,
