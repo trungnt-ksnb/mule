@@ -136,7 +136,7 @@ public class ResourceReleaserTestCase extends AbstractMuleTestCase {
     private ResourceReleaser resourceReleaserInstance;
 
     public TestArtifactClassLoader(ClassLoader parentCl) {
-      super(null, new ArtifactDescriptor("test"), new URL[0], parentCl, new ClassLoaderLookupPolicy() {
+      super("test", new ArtifactDescriptor("test"), new URL[0], parentCl, new ClassLoaderLookupPolicy() {
 
         @Override
         public ClassLoaderLookupStrategy getLookupStrategy(String className) {

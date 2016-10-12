@@ -101,9 +101,10 @@ public class IsolatedClassLoaderFactory {
         logClassLoaderUrls("PLUGIN (" + pluginUrlClassification.getName() + ")", pluginUrlClassification.getUrls());
 
         //TODO(pablo.kraan): serialization - ppas the artifactId
-        MuleArtifactClassLoader pluginCL = new MuleArtifactClassLoader(null, new ArtifactDescriptor(pluginUrlClassification.getName()),
-                                                                       pluginUrlClassification.getUrls().toArray(new URL[0]),
-                                                                       regionClassLoader, childClassLoaderLookupPolicy);
+        MuleArtifactClassLoader pluginCL =
+            new MuleArtifactClassLoader(null, new ArtifactDescriptor(pluginUrlClassification.getName()),
+                                        pluginUrlClassification.getUrls().toArray(new URL[0]),
+                                        regionClassLoader, childClassLoaderLookupPolicy);
         pluginsArtifactClassLoaders.add(pluginCL);
 
         ArtifactClassLoaderFilter filter = createArtifactClassLoaderFilter(pluginUrlClassification);
@@ -213,8 +214,7 @@ public class IsolatedClassLoaderFactory {
     }
     //TODO(pablo.kraan): serialization - ppas the artifactId
     return new MuleArtifactClassLoader(null, new ArtifactDescriptor("launcher"), new URL[0], launcherClassLoader,
-                                       new MuleClassLoaderLookupPolicy(Collections.emptyMap(), Collections.<String>emptySet())
-    );
+                                       new MuleClassLoaderLookupPolicy(Collections.emptyMap(), Collections.<String>emptySet()));
   }
 
   private ArtifactClassLoaderFilter createArtifactClassLoaderFilter(PluginUrlClassification pluginUrlClassification) {
