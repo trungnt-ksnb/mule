@@ -8,31 +8,16 @@ package org.mule.module.http.functional;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
-import static org.mule.MessageExchangePattern.REQUEST_RESPONSE;
-import static org.mule.api.config.MuleProperties.MULE_DEFAULT_PROCESSING_STRATEGY;
-import static org.mule.config.spring.util.ProcessingStrategyUtils.NON_BLOCKING_PROCESSING_STRATEGY;
 import static org.mule.module.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.module.http.api.HttpHeaders.Values.CHUNKED;
-import org.mule.DefaultMuleEvent;
-import org.mule.api.MessagingException;
 import org.mule.api.MuleEvent;
 import org.mule.api.MuleException;
-import org.mule.api.MuleMessage;
-import org.mule.api.construct.FlowConstruct;
 import org.mule.api.processor.MessageProcessor;
-import org.mule.api.transport.NonBlockingReplyToHandler;
-import org.mule.api.transport.ReplyToHandler;
-import org.mule.construct.Flow;
 import org.mule.tck.junit4.FunctionalTestCase;
 import org.mule.tck.junit4.rule.DynamicPort;
-import org.mule.tck.junit4.rule.SystemProperty;
-import org.mule.util.concurrent.Latch;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -44,37 +29,18 @@ import org.apache.http.nio.protocol.BasicAsyncResponseConsumer;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
-@RunWith(Parameterized.class)
 public class HttpStreamingTestCase extends FunctionalTestCase
 {
-    private static AtomicBoolean stop;
+    protected static AtomicBoolean stop;
 
     @Rule
     public DynamicPort httpPort = new DynamicPort("httpPort");
-    @Rule
-    public SystemProperty systemProperty;
 
     @Override
     protected String getConfigFile()
     {
         return "http-streaming-config.xml";
-    }
-
-    @Parameterized.Parameters
-    public static Collection<Object[]> parameters()
-    {
-        return Arrays.asList(new Object[][] {{false}});
-    }
-
-    public HttpStreamingTestCase(boolean nonBlocking)
-    {
-        if (nonBlocking)
-        {
-            systemProperty = new SystemProperty(MULE_DEFAULT_PROCESSING_STRATEGY, NON_BLOCKING_PROCESSING_STRATEGY);
-        }
     }
 
     @Before
@@ -86,20 +52,8 @@ public class HttpStreamingTestCase extends FunctionalTestCase
     @Test
     public void requesterStreams() throws Exception
     {
-        FlowConstruct flow = muleContext.getRegistry().lookupFlowConstruct("client");
-        ReplyToHandler handler = null;
-        Latch latch = null;
-        if (systemProperty != null)
-        {
-            latch = new Latch();
-            handler = new StopReplyToHandler(latch);
-        }
-        MuleEvent event = new DefaultMuleEvent(getTestMuleMessage(), REQUEST_RESPONSE, handler, flow);
-        ((Flow) flow).process(event);
-        if (latch != null)
-        {
-            latch.await();
-        }
+        runFlow("client");
+        stop.set(true);
     }
 
     @Test
@@ -115,30 +69,6 @@ public class HttpStreamingTestCase extends FunctionalTestCase
             assertThat(response.getFirstHeader(TRANSFER_ENCODING).getValue(), containsString(CHUNKED));
         } finally {
             httpclient.close();
-        }
-    }
-
-    private static class StopReplyToHandler implements NonBlockingReplyToHandler
-    {
-
-        private final Latch latch;
-
-        public StopReplyToHandler(Latch latch)
-        {
-            this.latch = latch;
-        }
-
-        @Override
-        public void processReplyTo(MuleEvent event, MuleMessage returnMessage, Object replyTo) throws MuleException
-        {
-            stop.set(true);
-            latch.release();
-        }
-
-        @Override
-        public void processExceptionReplyTo(MessagingException exception, Object replyTo)
-        {
-            fail();
         }
     }
 

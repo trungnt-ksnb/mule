@@ -321,9 +321,8 @@ public class GrizzlyHttpClient implements HttpClient
         @Override
         public STATE onBodyPartReceived(HttpResponseBodyPart bodyPart) throws Exception
         {
-            STATE state = super.onBodyPartReceived(bodyPart);
             triggerHandlerIfNecessary();
-            return state;
+            return super.onBodyPartReceived(bodyPart);
         }
 
         @Override
@@ -360,7 +359,10 @@ public class GrizzlyHttpClient implements HttpClient
         public void onThrowable(Throwable t)
         {
             super.onThrowable(t);
-            completionHandler.onFailure((Exception) t);
+            if (!triggered.getAndSet(true))
+            {
+                completionHandler.onFailure((Exception) t);
+            }
         }
 
         @Override
