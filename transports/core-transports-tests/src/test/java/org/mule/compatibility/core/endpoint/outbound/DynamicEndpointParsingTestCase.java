@@ -19,7 +19,6 @@ import org.mule.compatibility.core.api.endpoint.OutboundEndpoint;
 import org.mule.compatibility.core.endpoint.DynamicOutboundEndpoint;
 import org.mule.compatibility.core.endpoint.EndpointURIEndpointBuilder;
 import org.mule.runtime.core.MessageExchangePattern;
-import org.mule.runtime.core.VoidMuleEvent;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.message.InternalMessage;
 import org.mule.runtime.core.api.lifecycle.InitialisationException;
@@ -77,7 +76,7 @@ public class DynamicEndpointParsingTestCase extends AbstractMuleContextEndpointT
         .addOutboundProperty("host", "localhost").build()).build();
 
     Event response = endpoint.process(event);
-    assertSame(VoidMuleEvent.getInstance(), response);
+    assertSame(null, response);
 
     // Now test set on the endpoint
     endpoint =

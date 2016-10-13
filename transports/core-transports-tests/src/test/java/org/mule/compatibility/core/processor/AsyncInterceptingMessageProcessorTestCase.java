@@ -16,7 +16,6 @@ import static org.mule.runtime.core.MessageExchangePattern.ONE_WAY;
 import static org.mule.runtime.core.MessageExchangePattern.REQUEST_RESPONSE;
 import static org.mule.runtime.core.processor.AsyncInterceptingMessageProcessor.SYNCHRONOUS_EVENT_ERROR_MESSAGE;
 
-import org.mule.runtime.core.VoidMuleEvent;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.MuleException;
 import org.mule.runtime.core.api.context.WorkManager;
@@ -112,7 +111,7 @@ public class AsyncInterceptingMessageProcessorTestCase extends AbstractMuleConte
     assertEquals(event.getMessageAsString(muleContext), target.sensedEvent.getMessageAsString(muleContext));
     assertNotSame(Thread.currentThread(), target.thread);
 
-    assertSame(VoidMuleEvent.getInstance(), result);
+    assertSame(null, result);
     assertNull(exceptionThrown);
   }
 
