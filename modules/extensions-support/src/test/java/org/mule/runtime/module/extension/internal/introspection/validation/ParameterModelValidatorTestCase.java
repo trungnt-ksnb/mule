@@ -16,17 +16,6 @@ import static org.mule.test.module.extension.internal.util.ExtensionsTestUtils.d
 import static org.mule.test.module.extension.internal.util.ExtensionsTestUtils.mockSubTypes;
 import static org.mule.test.module.extension.internal.util.ExtensionsTestUtils.objectTypeBuilder;
 import static org.mule.test.module.extension.internal.util.ExtensionsTestUtils.toMetadataType;
-import org.mule.runtime.extension.api.annotation.Parameter;
-import org.mule.runtime.api.meta.model.ElementDslModel;
-import org.mule.runtime.api.meta.model.ExtensionModel;
-import org.mule.runtime.api.meta.model.operation.OperationModel;
-import org.mule.runtime.api.meta.model.parameter.ParameterModel;
-import org.mule.runtime.module.extension.internal.exception.IllegalParameterModelDefinitionException;
-import org.mule.runtime.module.extension.internal.introspection.ParameterGroup;
-import org.mule.runtime.module.extension.internal.model.property.ParameterGroupModelProperty;
-import org.mule.tck.junit4.AbstractMuleTestCase;
-import org.mule.tck.size.SmallTest;
-import org.mule.test.module.extension.internal.util.ExtensionsTestUtils;
 
 import java.io.Serializable;
 import java.util.List;
@@ -38,10 +27,42 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
+import org.mule.runtime.api.meta.model.ElementDslModel;
+import org.mule.runtime.api.meta.model.ExtensionModel;
+import org.mule.runtime.api.meta.model.OutputModel;
+import org.mule.runtime.api.meta.model.operation.OperationModel;
+import org.mule.runtime.api.meta.model.parameter.ParameterModel;
+import org.mule.runtime.api.meta.model.source.SourceModel;
+import org.mule.runtime.extension.api.annotation.Parameter;
+import org.mule.runtime.module.extension.internal.exception.IllegalParameterModelDefinitionException;
+import org.mule.runtime.module.extension.internal.introspection.ParameterGroup;
+import org.mule.runtime.module.extension.internal.model.property.ParameterGroupModelProperty;
+import org.mule.tck.junit4.AbstractMuleTestCase;
+import org.mule.tck.size.SmallTest;
+import org.mule.test.module.extension.internal.util.ExtensionsTestUtils;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.runners.MockitoJUnitRunner;
+import org.mule.runtime.module.extension.internal.model.property.ImplementingTypeModelProperty;
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
+import static org.mockito.Answers.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.when;
+import static org.mule.runtime.module.extension.internal.util.IntrospectionUtils.getField;
+import static org.mule.test.module.extension.internal.util.ExtensionsTestUtils.arrayOf;
+import static org.mule.test.module.extension.internal.util.ExtensionsTestUtils.dictionaryOf;
+import static org.mule.test.module.extension.internal.util.ExtensionsTestUtils.mockSubTypes;
+import static org.mule.test.module.extension.internal.util.ExtensionsTestUtils.objectTypeBuilder;
+import static org.mule.test.module.extension.internal.util.ExtensionsTestUtils.toMetadataType;
 
 @SmallTest
 @RunWith(MockitoJUnitRunner.class)
 public class ParameterModelValidatorTestCase extends AbstractMuleTestCase {
+
+  private static final String POJO = "pojo";
 
   @Mock(answer = RETURNS_DEEP_STUBS)
   private ExtensionModel extensionModel;
@@ -50,23 +71,32 @@ public class ParameterModelValidatorTestCase extends AbstractMuleTestCase {
   private OperationModel operationModel;
 
   @Mock
+  private SourceModel sourceModel;
+
+  @Mock
   private ParameterModel validParameterModel;
 
   @Mock
   private ParameterModel invalidParameterModel;
+
+  @Mock
+  private OutputModel outputModel;
 
   private ParameterModelValidator validator = new ParameterModelValidator();
 
   @Before
   public void before() {
     when(extensionModel.getOperationModels()).thenReturn(asList(operationModel));
+    when(extensionModel.getSourceModels()).thenReturn(asList(sourceModel));
     mockSubTypes(extensionModel);
     when(extensionModel.getImportedTypes()).thenReturn(emptySet());
     when(validParameterModel.getModelProperty(ParameterGroupModelProperty.class)).thenReturn(Optional.empty());
     when(validParameterModel.getDslModel()).thenReturn(ElementDslModel.getDefaultInstance());
+    when(invalidParameterModel.getModelProperty(ImplementingTypeModelProperty.class)).thenReturn(Optional.empty());
     when(invalidParameterModel.getModelProperty(ParameterGroupModelProperty.class)).thenReturn(Optional.empty());
     when(invalidParameterModel.getDslModel()).thenReturn(ElementDslModel.getDefaultInstance());
     when(operationModel.getName()).thenReturn("dummyOperation");
+    when(sourceModel.getName()).thenReturn("dummySource");
     when(extensionModel.getName()).thenReturn("extensionModel");
   }
 
@@ -75,7 +105,8 @@ public class ParameterModelValidatorTestCase extends AbstractMuleTestCase {
     when(validParameterModel.getType()).thenReturn(toMetadataType(String.class));
     when(validParameterModel.getName()).thenReturn("url");
     when(operationModel.getParameterModels()).thenReturn(asList(validParameterModel));
-
+    when(validParameterModel.getModelProperty(ImplementingTypeModelProperty.class))
+        .thenReturn(Optional.of(new ImplementingTypeModelProperty(String.class)));
     validator.validate(extensionModel);
   }
 
@@ -90,7 +121,7 @@ public class ParameterModelValidatorTestCase extends AbstractMuleTestCase {
   @Test(expected = IllegalParameterModelDefinitionException.class)
   public void invalidParameterDueToReservedName() {
     when(invalidParameterModel.getType()).thenReturn(toMetadataType(InvalidPojo.class));
-    when(invalidParameterModel.getName()).thenReturn("pojo");
+    when(invalidParameterModel.getName()).thenReturn(POJO);
     when(operationModel.getParameterModels()).thenReturn(asList(invalidParameterModel));
     validator.validate(extensionModel);
   }
@@ -117,7 +148,7 @@ public class ParameterModelValidatorTestCase extends AbstractMuleTestCase {
   @Test(expected = IllegalParameterModelDefinitionException.class)
   public void invalidRecursiveParameterDueToReservedName() {
     when(invalidParameterModel.getType()).thenReturn(toMetadataType(RecursivePojo.class));
-    when(invalidParameterModel.getName()).thenReturn("pojo");
+    when(invalidParameterModel.getName()).thenReturn(POJO);
     when(operationModel.getParameterModels()).thenReturn(asList(invalidParameterModel));
     validator.validate(extensionModel);
   }
@@ -125,7 +156,7 @@ public class ParameterModelValidatorTestCase extends AbstractMuleTestCase {
   @Test(expected = IllegalParameterModelDefinitionException.class)
   public void invalidNestedParameterDueToReservedName() {
     when(invalidParameterModel.getType()).thenReturn(toMetadataType(NestedInvalidPojo.class));
-    when(invalidParameterModel.getName()).thenReturn("pojo");
+    when(invalidParameterModel.getName()).thenReturn(POJO);
     when(operationModel.getParameterModels()).thenReturn(asList(invalidParameterModel));
     validator.validate(extensionModel);
   }
@@ -160,6 +191,37 @@ public class ParameterModelValidatorTestCase extends AbstractMuleTestCase {
     validator.validate(extensionModel);
   }
 
+  @Test(expected = IllegalParameterModelDefinitionException.class)
+  public void invalidModelDueToOperationWithArgumentParameterWithoutGetter() {
+    when(invalidParameterModel.getType()).thenReturn(toMetadataType(PojoWithParameterWithoutGetter.class));
+    when(invalidParameterModel.getModelProperty(ImplementingTypeModelProperty.class))
+        .thenReturn(Optional.of(new ImplementingTypeModelProperty(PojoWithParameterWithoutGetter.class)));
+    when(invalidParameterModel.getName()).thenReturn(POJO);
+    when(operationModel.getParameterModels()).thenReturn(asList(invalidParameterModel));
+    validator.validate(extensionModel);
+  }
+
+  @Test(expected = IllegalParameterModelDefinitionException.class)
+  public void invalidModelDueToOperationWithReturnTypeParameterWithoutGetter() {
+    when(operationModel.getParameterModels()).thenReturn(emptyList());
+    when(operationModel.getOutput()).thenReturn(outputModel);
+    when(operationModel.getOutput().getType()).thenReturn(toMetadataType(PojoWithParameterWithoutGetter.class));
+    when(operationModel.getOutput().getModelProperty(ImplementingTypeModelProperty.class))
+        .thenReturn(Optional.of(new ImplementingTypeModelProperty(PojoWithParameterWithoutGetter.class)));
+    when(invalidParameterModel.getName()).thenReturn(POJO);
+    validator.validate(extensionModel);
+  }
+
+  @Test(expected = IllegalParameterModelDefinitionException.class)
+  public void invalidModelDueToSourceWithReturnTypeParameterWithoutGetter() {
+    when(sourceModel.getParameterModels()).thenReturn(emptyList());
+    when(sourceModel.getOutput()).thenReturn(outputModel);
+    when(sourceModel.getOutput().getType()).thenReturn(toMetadataType(PojoWithParameterWithoutGetter.class));
+    when(sourceModel.getOutput().getModelProperty(ImplementingTypeModelProperty.class))
+        .thenReturn(Optional.of(new ImplementingTypeModelProperty(PojoWithParameterWithoutGetter.class)));
+    validator.validate(extensionModel);
+  }
+
   private static class InvalidPojo {
 
     public InvalidPojo() {
@@ -168,12 +230,20 @@ public class ParameterModelValidatorTestCase extends AbstractMuleTestCase {
 
     @Parameter
     private String name;
+
+    public String getName() {
+      return name;
+    }
   }
 
   public static class NestedInvalidPojo {
 
     @Parameter
     private InvalidPojo invalidPojo;
+
+    public InvalidPojo getInvalidPojo() {
+      return invalidPojo;
+    }
   }
 
   public static class RecursivePojo {
@@ -183,12 +253,26 @@ public class ParameterModelValidatorTestCase extends AbstractMuleTestCase {
 
     @Parameter
     private InvalidPojo invalidPojo;
+
+    public RecursivePojo getPojo() {
+      return pojo;
+    }
+
+    public InvalidPojo getInvalidPojo() {
+      return invalidPojo;
+    }
   }
 
   public static class InvalidPojoParameterGroup {
 
     @org.mule.runtime.extension.api.annotation.ParameterGroup
     private Serializable nonInstantiableField;
+  }
+
+  private static class PojoWithParameterWithoutGetter {
+
+    @Parameter
+    private String fieldWithoutGetter;
   }
 
 }

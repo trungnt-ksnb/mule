@@ -7,39 +7,52 @@
 package org.mule.runtime.module.extension.internal.introspection.validation;
 
 import static java.lang.String.format;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.mule.metadata.java.api.utils.JavaTypeUtils.getType;
 import static org.mule.runtime.api.meta.model.parameter.ParameterModel.RESERVED_NAMES;
 import static org.mule.runtime.extension.api.util.NameUtils.getTopLevelTypeName;
 import static org.mule.runtime.extension.api.util.NameUtils.hyphenize;
 import static org.mule.runtime.extension.xml.dsl.api.XmlModelUtils.supportsTopLevelDeclaration;
+import static org.mule.runtime.module.extension.internal.util.IntrospectionUtils.getAnnotatedFields;
 import static org.mule.runtime.module.extension.internal.util.IntrospectionUtils.getComponentModelTypeName;
+import static org.mule.runtime.module.extension.internal.util.IntrospectionUtils.getFieldsWithGetters;
 import static org.mule.runtime.module.extension.internal.util.IntrospectionUtils.isInstantiable;
 import static org.mule.runtime.module.extension.internal.util.MetadataTypeUtils.getId;
+
+import java.lang.reflect.Field;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
 import org.mule.metadata.api.model.ArrayType;
 import org.mule.metadata.api.model.DictionaryType;
 import org.mule.metadata.api.model.MetadataType;
 import org.mule.metadata.api.model.ObjectFieldType;
 import org.mule.metadata.api.model.ObjectType;
 import org.mule.metadata.api.visitor.MetadataTypeVisitor;
-import org.mule.runtime.api.meta.model.util.ExtensionWalker;
-import org.mule.runtime.extension.api.exception.IllegalModelDefinitionException;
+import org.mule.runtime.api.meta.model.ComponentModel;
 import org.mule.runtime.api.meta.model.ExtensionModel;
 import org.mule.runtime.api.meta.model.config.ConfigurationModel;
 import org.mule.runtime.api.meta.model.connection.ConnectionProviderModel;
-import org.mule.runtime.extension.api.introspection.declaration.type.annotation.XmlHintsAnnotation;
+import org.mule.runtime.api.meta.model.operation.HasOperationModels;
 import org.mule.runtime.api.meta.model.operation.OperationModel;
 import org.mule.runtime.api.meta.model.parameter.ParameterModel;
 import org.mule.runtime.api.meta.model.parameter.ParameterizedModel;
+import org.mule.runtime.api.meta.model.source.HasSourceModels;
+import org.mule.runtime.api.meta.model.source.SourceModel;
+import org.mule.runtime.api.meta.model.util.ExtensionWalker;
+import org.mule.runtime.extension.api.annotation.Parameter;
+import org.mule.runtime.extension.api.exception.IllegalModelDefinitionException;
+import org.mule.runtime.extension.api.introspection.declaration.type.annotation.XmlHintsAnnotation;
 import org.mule.runtime.extension.api.util.SubTypesMappingContainer;
 import org.mule.runtime.module.extension.internal.exception.IllegalParameterModelDefinitionException;
+import org.mule.runtime.module.extension.internal.model.property.ImplementingTypeModelProperty;
 import org.mule.runtime.module.extension.internal.model.property.ParameterGroupModelProperty;
 import org.mule.runtime.module.extension.internal.util.MetadataTypeUtils;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 
 /**
  * Validates that all {@link ParameterModel parameters} provided by the {@link ConfigurationModel configurations},
@@ -111,6 +124,31 @@ public final class ParameterModelValidator implements ModelValidator {
         validateNameCollisionWithTypes(model, ownerName, ownerModelType, extensionModelName,
                                        owner.getParameterModels().stream().map(p -> hyphenize(p.getName())).collect(toList()));
       }
+
+      @Override
+      public void onOperation(HasOperationModels owner, OperationModel model) {
+        model.getParameterModels().forEach(parameterModel -> parameterModel.getModelProperty(ImplementingTypeModelProperty.class)
+            .ifPresent(p -> validateParameterFieldsHaveGetters(model, p.getType())));
+
+        if (model.getOutput() != null) {
+          validateParameterFieldsHaveGetters(model, getType(model.getOutput().getType()));
+        }
+
+        if (model.getOutputAttributes() != null) {
+          validateParameterFieldsHaveGetters(model, getType(model.getOutputAttributes().getType()));
+        }
+      }
+
+      @Override
+      public void onSource(HasSourceModels owner, SourceModel model) {
+        if (model.getOutput() != null) {
+          validateParameterFieldsHaveGetters(model, getType(model.getOutput().getType()));
+        }
+
+        if (model.getOutputAttributes() != null) {
+          validateParameterFieldsHaveGetters(model, getType(model.getOutputAttributes().getType()));
+        }
+      }
     }.walk(extensionModel);
   }
 
@@ -140,6 +178,23 @@ public final class ParameterModelValidator implements ModelValidator {
     if ((supportsGlobalReferences(parameterModel) && supportsGlobalReferences(parameterModel.getType())) ||
         supportsInlineDefinition(parameterModel)) {
       parameterModel.getType().accept(visitor);
+    }
+  }
+
+  private void validateParameterFieldsHaveGetters(ComponentModel model, Class<?> parameterType) {
+    String modelTypeName = getComponentModelTypeName(model);
+    String modelName = model.getName();
+    Collection<Field> parameters = getAnnotatedFields(parameterType, Parameter.class);
+    Set<Field> fieldsWithGetters = getFieldsWithGetters(parameterType);
+    Set<Field> parameterWithoutGetters =
+        parameters.stream().filter(f -> !fieldsWithGetters.contains(f)).collect(toSet());
+    if (!parameterWithoutGetters.isEmpty()) {
+      throw new IllegalParameterModelDefinitionException(format("%s '%s' has an argument or return type of type '%s' which contains fields (%s) that doesn't have the corresponding getter methodss",
+                                                                modelTypeName, modelName,
+                                                                parameterType.getName(),
+                                                                parameterWithoutGetters.stream().map(Field::getName)
+                                                                    .collect(joining(", ")),
+                                                                Parameter.class.getName()));
     }
   }
 

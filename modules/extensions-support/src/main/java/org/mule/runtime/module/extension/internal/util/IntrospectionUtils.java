@@ -8,6 +8,7 @@ package org.mule.runtime.module.extension.internal.util;
 
 import static java.lang.String.format;
 import static java.lang.reflect.Modifier.isPublic;
+import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Collectors.toList;
@@ -75,6 +76,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -417,14 +419,20 @@ public final class IntrospectionUtils {
     if (!allFields.isEmpty()) {
       return allFields;
     }
-    return getFieldsWithGetterAndSetters(extensionType);
+    return getFieldsWithGetters(extensionType);
   }
 
-  public static Set<Field> getFieldsWithGetterAndSetters(Class<?> extensionType) {
+  public static Set<Field> getFieldsWithGetters(Class<?> extensionType) {
+    return getPropertyDescriptors(extensionType).stream().filter(p -> p.getReadMethod() != null)
+        .map(p -> getField(extensionType, p.getName()))
+        .filter(field -> field != null)
+        .collect(toSet());
+  }
+
+  private static List<PropertyDescriptor> getPropertyDescriptors(Class<?> extensionType) {
     try {
       PropertyDescriptor[] propertyDescriptors = Introspector.getBeanInfo(extensionType).getPropertyDescriptors();
-      return stream(propertyDescriptors).map(p -> getField(extensionType, p.getName())).filter(field -> field != null)
-          .collect(toSet());
+      return asList(propertyDescriptors);
     } catch (IntrospectionException e) {
       throw new IllegalModelDefinitionException("Could not introspect POJO: " + extensionType.getName(), e);
     }
