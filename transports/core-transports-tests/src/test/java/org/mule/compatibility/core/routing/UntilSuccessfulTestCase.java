@@ -106,7 +106,8 @@ public class UntilSuccessfulTestCase extends AbstractMuleContextTestCase {
     untilSuccessful.initialise();
     untilSuccessful.start();
 
-    assertSame(null, untilSuccessful.process(eventBuilder().message(InternalMessage.of("ERROR")).build()));
+    Event event = eventBuilder().message(InternalMessage.of("ERROR")).build();
+    assertSame(event, untilSuccessful.process(event));
 
     pollingProber.check(new JUnitProbe() {
 

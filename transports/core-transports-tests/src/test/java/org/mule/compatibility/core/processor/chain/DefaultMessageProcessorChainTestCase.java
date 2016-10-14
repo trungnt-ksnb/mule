@@ -95,7 +95,7 @@ public class DefaultMessageProcessorChainTestCase extends AbstractMuleContextTes
       MessageExchangePattern exchangePattern = ((OutboundEndpoint) invocation.getMock()).getExchangePattern();
       return exchangePattern == null ? true : !exchangePattern.hasResponse();
     });
-    when(mp.process(any(Event.class))).thenReturn(null);
+    when(mp.process(any(Event.class))).thenReturn(event);
 
     MessageProcessorChain chain = new DefaultMessageProcessorChainBuilder().chain(mp).build();
     Event response = process(chain, event);

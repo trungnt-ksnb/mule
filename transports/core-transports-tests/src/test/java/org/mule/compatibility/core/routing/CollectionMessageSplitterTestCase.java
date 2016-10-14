@@ -124,7 +124,7 @@ public class CollectionMessageSplitterTestCase extends AbstractMuleContextEndpoi
     splitter.setMuleContext(muleContext);
     Event event = eventBuilder().message(toSplit).session(session).build();
     event = populateFieldsFromInboundEndpoint(event, getTestInboundEndpoint("ep"));
-    assertSame(null, splitter.process(event));
+    assertSame(event, splitter.process(event));
   }
 
   @Test
