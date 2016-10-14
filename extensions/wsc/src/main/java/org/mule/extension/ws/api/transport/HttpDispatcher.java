@@ -18,9 +18,9 @@ import com.squareup.okhttp.Response;
 import java.io.IOException;
 import java.io.OutputStream;
 
-public class WsHttpDispatcher {
+public class HttpDispatcher {
 
-  public WsHttpDispatcher() {
+  public HttpDispatcher() {
 
   }
 

@@ -6,14 +6,23 @@
  */
 package org.mule.extension.ws.api;
 
+import org.mule.extension.ws.api.introspection.WsdlIntrospecter;
 import org.mule.extension.ws.api.transport.WscTransportFactory;
-import org.mule.extension.ws.api.transport.interceptor.NamespaceRestorerStaxInterceptor;
-import org.mule.extension.ws.api.transport.interceptor.NamespaceSaverStaxInterceptor;
-import org.mule.extension.ws.api.transport.interceptor.StreamClosingInterceptor;
+import org.mule.extension.ws.api.interceptor.NamespaceRestorerStaxInterceptor;
+import org.mule.extension.ws.api.interceptor.NamespaceSaverStaxInterceptor;
+import org.mule.extension.ws.api.interceptor.OutputSoapHeadersInterceptor;
+import org.mule.extension.ws.api.interceptor.StreamClosingInterceptor;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.List;
 import java.util.Map;
 
+import javax.wsdl.Definition;
+import javax.wsdl.Port;
+import javax.wsdl.extensions.http.HTTPAddress;
+import javax.wsdl.extensions.soap.SOAPAddress;
+import javax.wsdl.extensions.soap12.SOAP12Address;
 import javax.xml.namespace.QName;
 
 import org.apache.cxf.binding.Binding;
@@ -28,21 +37,25 @@ import org.apache.cxf.message.Message;
 import org.apache.cxf.phase.PhaseInterceptor;
 import org.apache.cxf.service.model.BindingOperationInfo;
 
-public class WsClient {
+public class WscConnection {
+
+  private static final WsdlIntrospecter wsdlIntrospecter = new WsdlIntrospecter();
 
   private final Client client;
   private final String wsdlLocation;
   private final String service;
   private final String port;
-  private final String soapVersion;
+  private final SoapVersion soapVersion;
 
-  public WsClient(String wsdlLocation, String address, String service, String port, String soapVersion) {
+  public WscConnection(String wsdlLocation, String address, String serviceName, String portName, SoapVersion soapVersion) {
     this.wsdlLocation = wsdlLocation;
-    this.service = service;
-    this.port = port;
+    this.service = serviceName;
+    this.port = portName;
     this.soapVersion = soapVersion;
-    this.client = new WscTransportFactory().createClient(wsdlLocation, address, soapVersion);
-    setupClient();
+    if (address == null) {
+      address = getSoapAddress(wsdlLocation, serviceName, portName);
+    }
+    this.client = createClient(address, soapVersion);
   }
 
   public Object[] invoke(Object payload, Map<String, Object> ctx) throws Exception {
@@ -70,14 +83,18 @@ public class WsClient {
     return bop;
   }
 
-  private void setupClient() {
-    addInInterceptor(new NamespaceRestorerStaxInterceptor());
-    addInInterceptor(new NamespaceSaverStaxInterceptor());
-    addInInterceptor(new StreamClosingInterceptor());
-    addInInterceptor(new CheckFaultInterceptor());
+  private Client createClient(String address, SoapVersion soapVersion) {
+    WscTransportFactory factory = new WscTransportFactory();
+    Client client = factory.createClient(address, soapVersion.getVersion());
+
+    // Response Interceptors
+    client.getInInterceptors().add(new NamespaceRestorerStaxInterceptor());
+    client.getInInterceptors().add(new NamespaceSaverStaxInterceptor());
+    client.getInInterceptors().add(new StreamClosingInterceptor());
+    client.getInInterceptors().add(new CheckFaultInterceptor());
+    client.getInInterceptors().add(new OutputSoapHeadersInterceptor());
 
     //client.getInInterceptors().add(new CopyAttachmentInInterceptor());
-    //client.getOutInterceptors().add(new OutputPayloadInterceptor());
     //client.getOutInterceptors().add(new CopyAttachmentOutInterceptor());
 
     Binding binding = client.getEndpoint().getBinding();
@@ -85,6 +102,8 @@ public class WsClient {
     removeInterceptor(binding.getInInterceptors(), Soap11FaultInInterceptor.class.getName());
     removeInterceptor(binding.getInInterceptors(), Soap12FaultInInterceptor.class.getName());
     removeInterceptor(binding.getInInterceptors(), CheckFaultInterceptor.class.getName());
+
+    return client;
   }
 
   private void removeInterceptor(List<Interceptor<? extends Message>> inInterceptors, String name) {
@@ -93,6 +112,31 @@ public class WsClient {
         .filter(i -> ((PhaseInterceptor) i).getId().equals(name))
         .findFirst()
         .ifPresent(inInterceptors::remove);
+  }
+
+  private String getSoapAddress(String wsdlLocation, String serviceName, String portName) {
+    Definition wsdlDefinition = wsdlIntrospecter.getWsdlDefinition(wsdlLocation);
+    Port port = wsdlIntrospecter.getPort(wsdlDefinition, serviceName, portName);
+    if (port != null) {
+      for (Object address : port.getExtensibilityElements()) {
+        if (address instanceof SOAPAddress) {
+          return ((SOAPAddress) address).getLocationURI();
+        } else if (address instanceof SOAP12Address) {
+          return ((SOAP12Address) address).getLocationURI();
+        } else if (address instanceof HTTPAddress) {
+          return ((HTTPAddress) address).getLocationURI();
+        }
+      }
+    }
+    throw new RuntimeException("Cannot create connection without an address, please specify one");
+  }
+
+  private URL resolveWsdlUrl(String wsdlLocation) {
+    try {
+      return com.ibm.wsdl.util.StringUtils.getURL(null, wsdlLocation);
+    } catch (MalformedURLException e) {
+      throw new IllegalArgumentException("The given wsdlLocation " + wsdlLocation + " could not be mapped to an URL", e);
+    }
   }
 
   public String getWsdlLocation() {
@@ -105,5 +149,9 @@ public class WsClient {
 
   public String getPort() {
     return port;
+  }
+
+  public SoapVersion getSoapVersion() {
+    return soapVersion;
   }
 }

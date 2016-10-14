@@ -6,89 +6,112 @@
  */
 package org.mule.extension.ws.api.metadata;
 
+import static java.util.Collections.emptyList;
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
+import org.mule.extension.ws.api.introspection.WsdlIntrospecter;
+import org.mule.extension.ws.api.introspection.WsdlSchemaCollector;
+import org.mule.runtime.core.util.collection.ImmutableListCollector;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 
+import javax.wsdl.Binding;
 import javax.wsdl.BindingOperation;
-import javax.wsdl.Definition;
 import javax.wsdl.Message;
+import javax.wsdl.Operation;
 import javax.wsdl.Part;
+import javax.wsdl.Port;
+import javax.wsdl.PortType;
+import javax.wsdl.extensions.soap.SOAPBody;
 import javax.wsdl.extensions.soap.SOAPHeader;
-import javax.xml.transform.TransformerException;
 
 public class OperationWsdlResolver {
 
-  private OperationIOResolver operationIOResolver;
-  private Definition definition;
-  private List<String> schemas;
-  private Message message;
-  private List<SOAPHeader> operationHeaders;
-  private Part messagePart;
+  private static final WsdlSchemaCollector schemaCollector = new WsdlSchemaCollector();
+  private static final WsdlIntrospecter introspecter = new WsdlIntrospecter();
 
-  public OperationWsdlResolver(OperationIOResolver operationIOResolver, final String wsdlLocation, final String serviceName,
-                               final String portName, final String operationName)
-      throws TransformerException {
-    initialize(operationIOResolver, wsdlLocation, serviceName, portName, operationName);
+  private final List<String> schemas;
+
+  public OperationWsdlResolver(String wsdlLocation) {
+    this.schemas = schemaCollector.getSchemas(introspecter.getWsdlDefinition(wsdlLocation));
   }
 
-  private void initialize(OperationIOResolver operationIOResolver, String wsdlLocation, String serviceName, String portName,
-                          String operationName)
-      throws TransformerException {
-    //this.operationIOResolver = operationIOResolver;
-    //
-    //this.definition = WsdlUtils.parseWSDL(wsdlLocation);
-    //this.schemas = WsdlSchemaUtils.getSchemas(definition);
-    //Service service = WsdlUtils.getService(definition, serviceName);
-    //Port port = WsdlUtils.getPort(service, portName);
-    //
-    //Binding binding = port.getBinding();
-    //PortType portType = binding.getPortType();
-    //Operation operation = WsdlUtils.getOperation(portType, operationName);
-    //
-    //this.message = operationIOResolver.getMessage(operation);
-    //WsdlUtils.validateNotNull(message, "There was an error while trying to resolve the message for the ["+operationName+"] operation.");
-    //
-    //BindingOperation bindingOperation = binding.getBindingOperation(operationName, null, null);
+  @SuppressWarnings("unchecked")
+  public List<SOAPHeader> getHeaders(BindingOperation bindingOperation) {
+    Optional<List> extensibilityElements = extensibilityElements(bindingOperation);
+    return (List<SOAPHeader>) extensibilityElements
+        .map(elements -> elements.stream()
+            .filter(e -> e != null && e instanceof SOAPHeader)
+            .collect(new ImmutableListCollector()))
+        .orElse(emptyList());
+  }
+
+  public Optional<Part> getMessagePart(Port port, String operationName, Function<Operation, Message> messageRetriever) {
+    Binding binding = port.getBinding();
+    PortType portType = binding.getPortType();
+    Operation operation = introspecter.getOperation(portType, operationName);
+    Message message = messageRetriever.apply(operation);
+
+    if (message == null) {
+      //WsdlUtils.validateNotNull(message, "There was an error while trying to resolve the message for the ["+operationName+"] operation.");
+    }
+
+    BindingOperation bindingOperation = binding.getBindingOperation(operationName, null, null);
     //operationHeaders = operationIOResolver.getHeaders(bindingOperation);
-    //
-    //messagePart = resolveMessagePart(bindingOperation);
+    return resolveMessagePart(bindingOperation, message);
   }
 
-  private Optional<Part> resolveMessagePart(BindingOperation bindingOperation) {
-    Map<?, ?> parts = message.getParts();
+  private Optional<Part> resolveMessagePart(BindingOperation bindingOperation, Message message) {
+    Map parts = message.getParts();
     if (!parts.isEmpty()) {
       if (parts.size() == 1) {
         //hack to behave the same way as before when the message has just one part
         Object firstValueKey = parts.keySet().toArray()[0];
-        return Optional.of((Part) parts.get(firstValueKey));
+        return of((Part) parts.get(firstValueKey));
       } else {
-        Optional<String> bodyPartNameOptional = operationIOResolver.getBodyPartName(bindingOperation);
+        Optional<String> bodyPartNameOptional = getBodyPartName(bindingOperation);
         if (bodyPartNameOptional.isPresent()) {
-          return Optional.of((Part) parts.get(bodyPartNameOptional.get()));
-        } else {
+          return of((Part) parts.get(bodyPartNameOptional.get()));
+        }
+      }
+    }
+    return empty();
+  }
+
+  private Optional<String> getBodyPartName(BindingOperation bindingOperation) {
+    Optional<List> listOptional = extensibilityElements(bindingOperation);
+    if (!listOptional.isPresent()) {
+      return Optional.empty();
+    }
+    for (Object object : listOptional.get()) {
+      //TODO what about other type of SOAP body out there? (e.g.: SOAP12Body)
+      if (object instanceof SOAPBody) {
+        SOAPBody soapBody = (SOAPBody) object;
+        List soapBodyParts = soapBody.getParts();
+        if (soapBodyParts.size() > 1) {
+          throw new RuntimeException("Warning: Operation Messages With More Than 1 Part Are Not Supported.");
+        }
+        if (soapBodyParts.isEmpty()) {
           return Optional.empty();
         }
+        String partName = (String) soapBodyParts.get(0);
+        return Optional.of(partName);
       }
     }
     return Optional.empty();
   }
 
-  //getters
-  public Definition getDefinition() {
-    return definition;
+  private Optional<List> extensibilityElements(BindingOperation bindingOperation) {
+    if (bindingOperation == null) {
+      return Optional.empty();
+    }
+    return Optional.ofNullable(bindingOperation.getBindingOutput().getExtensibilityElements());
   }
 
   public List<String> getSchemas() {
     return schemas;
-  }
-
-  public Optional<Part> getMessagePart() {
-    return Optional.ofNullable(messagePart);
-  }
-
-  public List<SOAPHeader> getOperationHeaders() {
-    return operationHeaders;
   }
 }

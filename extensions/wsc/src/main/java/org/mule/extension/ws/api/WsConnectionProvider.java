@@ -6,8 +6,6 @@
  */
 package org.mule.extension.ws.api;
 
-import static org.mule.runtime.api.connection.ConnectionExceptionCode.DISCONNECTED;
-import static org.mule.runtime.api.connection.ConnectionValidationResult.failure;
 import static org.mule.runtime.api.connection.ConnectionValidationResult.success;
 import org.mule.runtime.api.connection.ConnectionException;
 import org.mule.runtime.api.connection.ConnectionValidationResult;
@@ -15,39 +13,36 @@ import org.mule.runtime.api.connection.PoolingConnectionProvider;
 import org.mule.runtime.extension.api.annotation.Parameter;
 import org.mule.runtime.extension.api.annotation.param.Optional;
 
-public class WsConnectionProvider implements PoolingConnectionProvider<WsClient> {
+public class WsConnectionProvider implements PoolingConnectionProvider<WscConnection> {
+
+  @Parameter
+  private String wsdlLocation;
+
+  @Parameter
+  private String service;
+
+  @Parameter
+  private String port;
 
   @Parameter
   @Optional
   private String address;
 
   @Parameter
-  @Optional
-  private String service;
-
-  @Parameter
-  @Optional
-  private String port;
-
-  @Parameter
-  @Optional(defaultValue = "1.1")
-  private String soapVersion;
-
-  @Parameter
-  @Optional
-  private String wsdlLocation;
+  @Optional(defaultValue = "SOAP11")
+  private SoapVersion soapVersion;
 
   @Override
-  public WsClient connect() throws ConnectionException {
-    return new WsClient(wsdlLocation, address, service, port, soapVersion);
+  public WscConnection connect() throws ConnectionException {
+    return new WscConnection(wsdlLocation, address, service, port, soapVersion);
   }
 
   @Override
-  public void disconnect(WsClient client) {}
+  public void disconnect(WscConnection client) {}
 
   @Override
-  public ConnectionValidationResult validate(WsClient client) {
-    return client != null ? success() : failure("null client", DISCONNECTED, null);
+  public ConnectionValidationResult validate(WscConnection client) {
+    return success();
   }
 
 }

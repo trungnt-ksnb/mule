@@ -4,14 +4,9 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-/**
- * (c) 2003-2014 MuleSoft, Inc. The software in this package is published under the terms of the CPAL v1.0 license,
- * a copy of which has been included with this distribution in the LICENSE.md file.
- */
-
 package org.mule.extension.ws.api.introspection;
 
-
+import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 
@@ -44,14 +39,10 @@ import org.apache.commons.lang.StringUtils;
 @SuppressWarnings("unchecked")
 public final class WsdlIntrospecter {
 
-  private final Definition definition;
+  private static final WsdlSchemaCollector schemaCollector = new WsdlSchemaCollector();
 
-  public WsdlIntrospecter(String wsdlLocation) {
-    definition = parseWSDL(wsdlLocation);
-  }
-
-  public List<String> getServiceNames(Definition wsdlDefinition) {
-    Map<QName, Service> services = wsdlDefinition.getServices();
+  public List<String> getServiceNames(Definition definition) {
+    Map<QName, Service> services = definition.getServices();
     if (services != null) {
       return services.keySet().stream().map(QName::getLocalPart).collect(Collectors.toList());
     }
@@ -65,26 +56,30 @@ public final class WsdlIntrospecter {
     return emptySet();
   }
 
+  public Set<String> getPortNames(Definition definition, String service) {
+    return getPortNames(getService(definition, service));
+  }
+
   public List<String> getOperationNames(Port port) {
     List<BindingOperation> bindingOperations = (List<BindingOperation>) port.getBinding().getBindingOperations();
     return bindingOperations.stream().map(BindingOperation::getName).collect(Collectors.toList());
   }
 
-  public List<String> getOperationNames(String serviceName, String portName) {
-    Port port = getPort(getService(serviceName), portName);
+  public List<String> getOperationNames(Definition definition, String serviceName, String portName) {
+    Port port = getPort(definition, serviceName, portName);
     return getOperationNames(port);
   }
 
-  public Service getService(String serviceName) {
+  public Service getService(Definition definition, String serviceName) {
     validateBlankString(serviceName, "service name");
     Service service = definition.getService(new QName(definition.getTargetNamespace(), serviceName));
     validateNotNull(service, "The service name [" + serviceName + "] was not found in the current wsdl file.");
     return service;
   }
 
-  public Port getPort(Service service, String portName) {
+  public Port getPort(Definition definition, String service, String portName) {
     validateBlankString(portName, "port name");
-    Port port = service.getPort(portName.trim());
+    Port port = getService(definition, service).getPort(portName.trim());
     validateNotNull(port, "The port name [" + portName + "] was not found in the current wsdl file.");
     return port;
   }
@@ -103,6 +98,10 @@ public final class WsdlIntrospecter {
     return fault;
   }
 
+  private List<String> getSchemas(Definition definition) {
+    return schemaCollector.getSchemas(definition);
+  }
+
   /**
    * Given a Wsdl location (either local or remote) it will fetch the definition. If the definition cannot be created, then
    * an exception will be raised
@@ -110,15 +109,16 @@ public final class WsdlIntrospecter {
    * @param wsdlLocation path to the desired Wsdl file
    * @return the Definiton that represents the Wsdl file
    */
-  private Definition parseWSDL(final String wsdlLocation) {
+  public Definition getWsdlDefinition(final String wsdlLocation) {
     try {
-      validateBlankString(wsdlLocation, "wsdl location");
+      validateBlankString(wsdlLocation, "Wsdl Location");
 
       WSDLFactory factory = WSDLFactory.newInstance();
       ExtensionRegistry registry = factory.newPopulatedExtensionRegistry();
       registry.registerSerializer(Types.class,
                                   new QName("http://www.w3.org/2001/XMLSchema", "schema"),
                                   new SchemaSerializer());
+
       // these will replace whatever may have already been registered
       // in these places, but there's no good way to check what was
       // there before.
@@ -129,10 +129,10 @@ public final class WsdlIntrospecter {
       registry.registerSerializer(MIMEPart.class,
                                   header,
                                   registry.querySerializer(BindingInput.class, header));
+
       // get the original classname of the SOAPHeader
       // implementation that was stored in the registry.
-      Class<? extends ExtensibilityElement> clazz =
-          registry.createExtension(BindingInput.class, header).getClass();
+      Class<? extends ExtensibilityElement> clazz = registry.createExtension(BindingInput.class, header).getClass();
       registry.mapExtensionTypes(MIMEPart.class, header, clazz);
 
       WSDLReader wsdlReader = factory.newWSDLReader();
@@ -141,23 +141,22 @@ public final class WsdlIntrospecter {
       wsdlReader.setExtensionRegistry(registry);
 
       Definition definition = wsdlReader.readWSDL(wsdlLocation);
-      validateNotNull(definition, "There was an issue while parsing the wsdl file for [" + wsdlLocation + "].");
+      validateNotNull(definition, format("Cannot obtain WSDL definition for file [%s]", wsdlLocation));
 
       return definition;
     } catch (WSDLException e) {
-      String errorMessage = "Something went wrong when parsing the wsdl file";
-      errorMessage += StringUtils.isBlank(e.getMessage()) ? " for [" + wsdlLocation + "]" : ", full message " + e.getMessage();
-      throw new IllegalArgumentException(errorMessage, e); //TODO tech debt: we should analyze the type of exception (missing or corrupted file) and thrown better exceptions
+      //TODO tech debt: we should analyze the type of exception (missing or corrupted file) and thrown better exceptions
+      throw new IllegalArgumentException(format("Something went wrong when parsing the wsdl file [%s]", wsdlLocation), e);
     }
   }
 
-  public void validateNotNull(Object paramValue, String errorMessage) {
+  private void validateNotNull(Object paramValue, String errorMessage) {
     if (paramValue == null) {
       throw new IllegalArgumentException(errorMessage);
     }
   }
 
-  public void validateBlankString(String paramValue, String paramName) {
+  private void validateBlankString(String paramValue, String paramName) {
     if (StringUtils.isBlank(paramValue)) {
       throw new IllegalArgumentException("The " + paramName + " can not be blank nor null.");
     }

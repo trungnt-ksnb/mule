@@ -27,7 +27,7 @@ public class WscTransportFactory extends AbstractTransportFactory {
     if (bus == null) {
       bus = new SpringBusFactory().createBus((String) null, true);
     }
-    WsConduitInitiator initiator = new WsConduitInitiator();
+    WscConduitInitiator initiator = new WscConduitInitiator();
     ConduitInitiatorManager extension = bus.getExtension(ConduitInitiatorManager.class);
     try {
       // Force the HTTP transport to load if available, otherwise it could
@@ -47,20 +47,9 @@ public class WscTransportFactory extends AbstractTransportFactory {
     extension.registerConduitInitiator("http://cxf.apache.org/bindings/xformat", initiator);
     extension.registerConduitInitiator("http://cxf.apache.org/transports/jms", initiator);
     extension.registerConduitInitiator("http://mule.codehaus.org/ws", initiator);
-
-    //bus.getOutInterceptors().add(new MuleProtocolHeadersOutInterceptor());
-    //bus.getOutFaultInterceptors().add(new MuleProtocolHeadersOutInterceptor());
-    //
-    //if (enableMuleSoapHeaders)
-    //{
-    //  bus.getInInterceptors().add(new MuleHeadersInInterceptor());
-    //  bus.getInFaultInterceptors().add(new MuleHeadersInInterceptor());
-    //  bus.getOutInterceptors().add(new MuleHeadersOutInterceptor());
-    //  bus.getOutFaultInterceptors().add(new MuleHeadersOutInterceptor());
-    //}
   }
 
-  public Client createClient(String wsdlLocation, String address, String soapVersion) {
+  public Client createClient(String address, String soapVersion) {
     ClientFactoryBean factory = new ClientFactoryBean();
     factory.setServiceClass(ProxyService.class);
     factory.setDataBinding(new StaxDataBinding());
@@ -68,15 +57,9 @@ public class WscTransportFactory extends AbstractTransportFactory {
     factory.setAddress(address);
     factory.setBus(bus);
 
-    //factory.setProperties(properties); <-- ADD
-
     // If there's a soapVersion defined then the corresponding bindingId will be set
     if (soapVersion != null) {
       factory.setBindingId(getBindingIdForSoapVersion(soapVersion));
-    }
-
-    if (wsdlLocation != null) {
-      factory.setWsdlURL(wsdlLocation);
     }
 
     return factory.create();

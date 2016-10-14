@@ -8,7 +8,7 @@ package org.mule.extension.ws.api.transport;
 
 import static org.mule.extension.ws.api.ConsumeOperation.MULE_ATTACHMENTS_KEY;
 import static org.mule.extension.ws.api.ConsumeOperation.MULE_HEADERS_KEY;
-import org.mule.extension.ws.api.transport.interceptor.MessageDispatcherInterceptor;
+import org.mule.extension.ws.api.interceptor.MessageDispatcherInterceptor;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -24,11 +24,11 @@ import org.apache.cxf.message.Message;
 import org.apache.cxf.transport.AbstractConduit;
 import org.apache.cxf.ws.addressing.EndpointReferenceType;
 
-public final class WsConduit extends AbstractConduit {
+public final class WscConduit extends AbstractConduit {
 
-  private static final Logger LOGGER = Logger.getLogger(WsConduit.class.getSimpleName());
+  private static final Logger LOGGER = Logger.getLogger(WscConduit.class.getSimpleName());
 
-  public WsConduit(EndpointReferenceType t) {
+  public WscConduit(EndpointReferenceType t) {
     super(t);
   }
 
@@ -41,11 +41,23 @@ public final class WsConduit extends AbstractConduit {
   @SuppressWarnings("unchecked")
   public void prepare(Message message) throws IOException {
     message.setContent(OutputStream.class, new ByteArrayOutputStream());
-    List<SoapHeader> soapHeaders = (List<SoapHeader>) message.getExchange().get(MULE_HEADERS_KEY);
-    soapHeaders.forEach(header -> ((SoapMessage) message).getHeaders().add(header));
+    addHeaders(message);
+    addAttachments(message);
+    addInterceptors(message);
+  }
+
+  private void addInterceptors(Message message) {
+    message.getInterceptorChain().add(new MessageDispatcherInterceptor(getMessageObserver()));
+  }
+
+  private void addAttachments(Message message) {
     List<Attachment> soapAttachments = (List<Attachment>) message.getExchange().get(MULE_ATTACHMENTS_KEY);
     message.setAttachments(soapAttachments);
-    message.getInterceptorChain().add(new MessageDispatcherInterceptor(getMessageObserver()));
+  }
+
+  private void addHeaders(Message message) {
+    List<SoapHeader> soapHeaders = (List<SoapHeader>) message.getExchange().get(MULE_HEADERS_KEY);
+    soapHeaders.forEach(header -> ((SoapMessage) message).getHeaders().add(header));
   }
 
   @Override

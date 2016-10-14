@@ -11,7 +11,7 @@ import static javax.xml.soap.SOAPConstants.SOAP_1_2_PROTOCOL;
 
 public enum SoapVersion {
 
-  SOAP_11("1.1", SOAP_1_1_PROTOCOL), SOAP_12("1.2", SOAP_1_2_PROTOCOL);
+  SOAP11("1.1", SOAP_1_1_PROTOCOL), SOAP12("1.2", SOAP_1_2_PROTOCOL);
 
   private String version;
   private String protocol;

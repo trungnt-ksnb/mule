@@ -1,0 +1,22 @@
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:ws="http://www.mulesoft.org/schema/mule/wsc"
+      xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+      http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd">
+
+    <ws:config name="config">
+        <ws:connection address="http://localhost:6045/testService"
+                       soapVersion="SOAP11"
+                       service="TestService"
+                       port="TestPort"
+                       wsdlLocation="http://localhost:6045/testService?wsdl"/>
+    </ws:config>
+
+    <flow name="getKeys">
+        <ws:consume config-ref="config" operation="echo" payload="#[payload]"/>
+    </flow>
+
+    <flow name="getEchoInputBodyMetadata">
+        <ws:consume config-ref="config" operation="echo" payload="#[payload]"/>
+    </flow>
+</mule>

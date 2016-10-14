@@ -15,6 +15,7 @@ import static org.mule.runtime.core.util.ClassUtils.withContextClassLoader;
 import org.mule.extension.ws.consumer.TestService;
 import org.mule.functional.junit4.MuleArtifactFunctionalTestCase;
 import org.mule.runtime.api.message.Message;
+import org.mule.runtime.core.api.MuleException;
 import org.mule.runtime.core.util.IOUtils;
 
 import java.io.IOException;
@@ -36,8 +37,7 @@ import javax.xml.ws.Endpoint;
 
 import org.custommonkey.xmlunit.Diff;
 import org.custommonkey.xmlunit.XMLUnit;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.rules.ExpectedException;
 import org.w3c.dom.Document;
@@ -46,22 +46,24 @@ import org.xml.sax.SAXException;
 
 public abstract class WebServiceConsumerTestCase extends MuleArtifactFunctionalTestCase {
 
-  private static final String SERVICE_URL = "http://localhost:6045/testService";
+  public static final String SERVICE_URL = "http://localhost:6045/testService";
+  public static final String WSDL_URL = SERVICE_URL + "?wsdl";
 
   @Rule
   public ExpectedException expectedException = ExpectedException.none();
 
-  private Endpoint service;
+  private static Endpoint service;
 
-  @Before
-  public void setup() {
+  @BeforeClass
+  public static void startService() throws MuleException {
     XMLUnit.setIgnoreWhitespace(true);
-    service = withContextClassLoader(ClassLoader.getSystemClassLoader(), () -> publish(SERVICE_URL, new TestService()));
+    if (service == null) {
+      service = withContextClassLoader(ClassLoader.getSystemClassLoader(), () -> publish(SERVICE_URL, new TestService()));
+    }
     assertTrue(service.isPublished());
   }
 
-  @After
-  public void tearDown() {
+  public static void stopService() {
     service.stop();
   }
 

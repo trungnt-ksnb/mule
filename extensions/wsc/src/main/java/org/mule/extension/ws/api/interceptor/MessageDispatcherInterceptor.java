@@ -4,11 +4,11 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.extension.ws.api.transport.interceptor;
+package org.mule.extension.ws.api.interceptor;
 
 import static org.apache.cxf.phase.Phase.SEND_ENDING;
 import static org.apache.logging.log4j.util.Strings.isNotBlank;
-import org.mule.extension.ws.api.transport.WsHttpDispatcher;
+import org.mule.extension.ws.api.transport.HttpDispatcher;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -40,7 +40,7 @@ public class MessageDispatcherInterceptor extends AbstractPhaseInterceptor<Messa
 
     //
     OutputStream content = msg.getContent(OutputStream.class);
-    String dispatched = new WsHttpDispatcher().dispatch(content);
+    String dispatched = new HttpDispatcher().dispatch(content);
 
     Exchange exchange = msg.getExchange();
     if (isNotBlank(dispatched)) {

@@ -34,7 +34,47 @@ import org.w3c.dom.NodeList;
 @SuppressWarnings("unchecked")
 public final class WsdlSchemaCollector {
 
-  public List<String> resolveSchema(final Map<String, String> wsdlNamespaces, Schema schema) throws TransformerException {
+  private static final String XML_NS_PREFIX = "xmlns:";
+
+  public List<String> getSchemas(Definition wsdlDefinition)  {
+    Map<String, String> wsdlNamespaces = wsdlDefinition.getNamespaces();
+    List<String> schemas = new ArrayList<>();
+    List<Types> typesList = new ArrayList<>();
+
+    // Add current types definition if present
+    if (wsdlDefinition.getTypes() != null) {
+      typesList.add(wsdlDefinition.getTypes());
+    }
+
+    for (Types types : typesList) {
+      for (Object o : types.getExtensibilityElements()) {
+        if (o instanceof javax.wsdl.extensions.schema.Schema) {
+          Schema schema = (Schema) o;
+          for (Map.Entry<String, String> entry : wsdlNamespaces.entrySet()) {
+            boolean isDefault = StringUtils.isEmpty(entry.getKey());
+            boolean containsNamespace = schema.getElement().hasAttribute(XML_NS_PREFIX + entry.getKey());
+
+            if (!isDefault && !containsNamespace) {
+              schema.getElement().setAttribute(XML_NS_PREFIX + entry.getKey(), entry.getValue());
+            }
+          }
+          fixSchemaLocations(schema);
+          schemas.add(schemaToString(schema));
+        }
+      }
+    }
+
+    // Allow importing types from other wsdl
+    for (Object wsdlImportList : wsdlDefinition.getImports().values()) {
+      for (Import wsdlImport : (List<Import>) wsdlImportList) {
+        schemas.addAll(getSchemas(wsdlImport.getDefinition()));
+      }
+    }
+
+    return schemas;
+  }
+
+  private List<String> resolveSchema(final Map<String, String> wsdlNamespaces, Schema schema) throws TransformerException {
     final List<String> schemas = new ArrayList<>();
     fixPrefix(wsdlNamespaces, schema);
     fixSchemaLocations(schema);
@@ -44,34 +84,6 @@ public final class WsdlSchemaCollector {
     // for (Object location : schema.getIncludes()) {
     // schemas.add(schemaToString(((SchemaReference) location).getReferencedSchema()));
     // }
-    return schemas;
-  }
-
-  public List<String> getSchemas(Definition wsdlDefinition) {
-    final Map<String, String> wsdlNamespaces = wsdlDefinition.getNamespaces();
-    final List<String> schemas = new ArrayList<>();
-    try {
-      final List<Types> typesList = new ArrayList<>();
-      extractWsdlTypes(wsdlDefinition, typesList);
-      for (Types types : typesList) {
-        for (Object o : types.getExtensibilityElements()) {
-          if (o instanceof Schema) {
-            schemas.addAll(resolveSchema(wsdlNamespaces, (Schema) o));
-          }
-        }
-      }
-
-      // Allow importing types from other wsdl
-      for (Object wsdlImportList : wsdlDefinition.getImports().values()) {
-        final List<Import> importList = (List<Import>) wsdlImportList;
-        for (Import wsdlImport : importList) {
-          schemas.addAll(getSchemas(wsdlImport.getDefinition()));
-        }
-      }
-    } catch (TransformerException e) {
-      throw new IllegalStateException("There was an issue while obtaining schemas.", e);
-    }
-
     return schemas;
   }
 
@@ -141,15 +153,19 @@ public final class WsdlSchemaCollector {
     return documentURI.substring(0, fileNameIndex);
   }
 
-  private String schemaToString(final Schema schema) throws TransformerException {
+  private String schemaToString(final Schema schema) {
     Element element = schema.getElement();
     return elementToString(element);
   }
 
-  private String elementToString(Element element) throws TransformerException {
-    StringWriter writer = new StringWriter();
-    Transformer transformer = TransformerFactory.newInstance().newTransformer();
-    transformer.transform(new DOMSource(element), new StreamResult(writer));
-    return writer.toString();
+  private String elementToString(Element element) {
+    try {
+      StringWriter writer = new StringWriter();
+      Transformer transformer = TransformerFactory.newInstance().newTransformer();
+      transformer.transform(new DOMSource(element), new StreamResult(writer));
+      return writer.toString();
+    } catch (TransformerException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

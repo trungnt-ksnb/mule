@@ -6,6 +6,8 @@
  */
 package org.mule.extension.ws;
 
+import org.mule.runtime.api.message.Message;
+
 import org.junit.Test;
 
 public class EchoTestCase extends WebServiceConsumerTestCase {
@@ -19,4 +21,14 @@ public class EchoTestCase extends WebServiceConsumerTestCase {
   public void echoOperation() throws Exception {
     testSoapOperation("echoOperation", "echo.xml");
   }
+
+  @Test
+  public void echoWithHeadersOperation() throws Exception {
+    Message message = flowRunner("echoWithHeadersOperation")
+      .withPayload(resourceAsString("request/echoWithHeaders.xml"))
+      .run().getMessage();
+    String out = (String) message.getPayload().getValue();
+    assertSimilarXml("response/echoWithHeaders.xml", out);
+  }
+
 }

@@ -10,9 +10,12 @@ package org.mule.extension.ws.api;
 import static java.util.Collections.emptyList;
 import static org.mule.runtime.core.util.IOUtils.toDataHandler;
 import org.mule.extension.ws.api.exception.WebServiceConsumerException;
-import org.mule.extension.ws.api.transport.interceptor.SoapActionInterceptor;
+import org.mule.extension.ws.api.metadata.BodyResolver;
+import org.mule.extension.ws.api.metadata.OperationKeysResolver;
+import org.mule.extension.ws.api.interceptor.SoapActionInterceptor;
 import org.mule.runtime.core.util.collection.ImmutableListCollector;
 import org.mule.runtime.extension.api.annotation.metadata.MetadataKeyId;
+import org.mule.runtime.extension.api.annotation.metadata.TypeResolver;
 import org.mule.runtime.extension.api.annotation.param.Connection;
 import org.mule.runtime.extension.api.annotation.param.Optional;
 import org.mule.runtime.extension.api.runtime.operation.OperationResult;
@@ -49,14 +52,19 @@ public class ConsumeOperation {
   public static final String MULE_ATTACHMENTS_KEY = "mule.wsc.attachments";
   public static final String MULE_HEADERS_KEY = "mule.wsc.headers";
 
-  public OperationResult<String, WsAttributes> consume(@Connection WsClient wsclient,
-                                                       @MetadataKeyId String operationName,
-                                                       @Optional String payload,
+  public OperationResult<String, WsAttributes> consume(@Connection WscConnection connection,
+                                                       @MetadataKeyId(OperationKeysResolver.class) String operation,
+                                                       @Optional @TypeResolver(BodyResolver.class) String payload,
                                                        @Optional Map<String, String> headers,
                                                        @Optional List<WsAttachment> attachments)
       throws Exception {
+    connection.addOutInterceptor(new SoapActionInterceptor(operation));
+    Map<String, Object> ctx = getContext(headers, attachments);
+    Object[] response = connection.invoke(stringToXmlStreamReader(payload, operation), ctx);
+    return asResult(processResponse(response), new WsAttributes());
+  }
 
-    wsclient.addOutInterceptor(new SoapActionInterceptor(operationName));
+  private Map<String, Object> getContext(@Optional Map<String, String> headers, @Optional List<WsAttachment> attachments) {
     Map<String, Object> props = new HashMap<>();
     props.put(MULE_ATTACHMENTS_KEY, transformAttachments(attachments));
     props.put(MULE_HEADERS_KEY, transformHeaders(headers));
@@ -64,9 +72,7 @@ public class ConsumeOperation {
     Map<String, Object> ctx = new HashMap<>();
     ctx.put(Client.REQUEST_CONTEXT, props);
     ctx.put(Client.RESPONSE_CONTEXT, props);
-
-    Object[] response = wsclient.invoke(stringToXmlStreamReader(payload), ctx);
-    return asResult(processResponse(response), new WsAttributes());
+    return ctx;
   }
 
   private OperationResult<String, WsAttributes> asResult(String output, WsAttributes attributes) {
@@ -118,12 +124,12 @@ public class ConsumeOperation {
     }
   }
 
-  private XMLStreamReader stringToXmlStreamReader(String xml) {
+  private XMLStreamReader stringToXmlStreamReader(String body, String operation) {
     try {
-      if (xml == null) {
-        xml = "Aca va un empty content o como garcha sea";
+      if (body == null) {
+        body = new RequestBodyGenerator(null, operation, emptyList()).generateRequest();
       }
-      return XMLInputFactory.newInstance().createXMLStreamReader(new ByteArrayInputStream(xml.getBytes()));
+      return XMLInputFactory.newInstance().createXMLStreamReader(new ByteArrayInputStream(body.getBytes()));
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

@@ -8,6 +8,7 @@ package org.mule.extension.ws.api.transport;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
+import static org.apache.cxf.wsdl.EndpointReferenceUtils.setServiceAndPortName;
 
 import java.io.IOException;
 import java.util.List;
@@ -19,9 +20,8 @@ import org.apache.cxf.transport.Conduit;
 import org.apache.cxf.transport.ConduitInitiator;
 import org.apache.cxf.ws.addressing.AttributedURIType;
 import org.apache.cxf.ws.addressing.EndpointReferenceType;
-import org.apache.cxf.wsdl.EndpointReferenceUtils;
 
-public class WsConduitInitiator implements ConduitInitiator {
+public class WscConduitInitiator implements ConduitInitiator {
 
   @Override
   public Conduit getConduit(EndpointInfo targetInfo) throws IOException {
@@ -30,7 +30,7 @@ public class WsConduitInitiator implements ConduitInitiator {
 
   @Override
   public Conduit getConduit(EndpointInfo localInfo, EndpointReferenceType target) throws IOException {
-    return new WsConduit(getTargetReference(localInfo, target));
+    return new WscConduit(getTargetReference(localInfo, target));
   }
 
   @Override
@@ -52,8 +52,7 @@ public class WsConduitInitiator implements ConduitInitiator {
     address.setValue(endpointInfo.getAddress());
     ref.setAddress(address);
     if (endpointInfo.getService() != null) {
-      EndpointReferenceUtils.setServiceAndPortName(ref, endpointInfo.getService().getName(),
-                                                   endpointInfo.getName().getLocalPart());
+      setServiceAndPortName(ref, endpointInfo.getService().getName(), endpointInfo.getName().getLocalPart());
     }
     return ref;
   }
